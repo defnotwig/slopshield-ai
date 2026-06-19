@@ -1,9 +1,9 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as yaml from 'js-yaml';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { Rule } from '@slopshield/shared';
+import { Injectable, OnModuleInit, Logger } from "@nestjs/common";
+import * as fs from "fs";
+import * as path from "path";
+import * as yaml from "js-yaml";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { Rule } from "@slopshield/shared";
 
 @Injectable()
 export class RulesService implements OnModuleInit {
@@ -21,18 +21,20 @@ export class RulesService implements OnModuleInit {
    */
   public async loadRulesFromDisk(): Promise<void> {
     try {
-      const rulesDir = path.join(process.cwd(), 'rules');
+      const rulesDir = path.join(process.cwd(), "rules");
       if (!fs.existsSync(rulesDir)) {
         this.logger.warn(`Rules directory not found at: ${rulesDir}`);
         return;
       }
 
-      const files = fs.readdirSync(rulesDir).filter((file) => file.endsWith('.yaml') || file.endsWith('.yml'));
+      const files = fs
+        .readdirSync(rulesDir)
+        .filter((file) => file.endsWith(".yaml") || file.endsWith(".yml"));
       this.logger.log(`Found ${files.length} rules configuration files.`);
 
       for (const file of files) {
         const filePath = path.join(rulesDir, file);
-        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const fileContent = fs.readFileSync(filePath, "utf8");
         const parsedDoc: any = yaml.load(fileContent);
 
         if (parsedDoc && Array.isArray(parsedDoc.rules)) {
@@ -69,8 +71,8 @@ export class RulesService implements OnModuleInit {
               standards: dbRule.standards as string[],
               blocking: dbRule.blocking,
               enabled: dbRule.enabled,
-              description: ruleData.description || '',
-              recommendation: ruleData.recommendation || '',
+              description: ruleData.description || "",
+              recommendation: ruleData.recommendation || "",
               detection: ruleData.detection,
             });
           }
@@ -97,8 +99,8 @@ export class RulesService implements OnModuleInit {
         standards: dbRule.standards as string[],
         blocking: dbRule.blocking,
         enabled: dbRule.enabled,
-        description: cached?.description || '',
-        recommendation: cached?.recommendation || '',
+        description: cached?.description || "",
+        recommendation: cached?.recommendation || "",
         detection: cached?.detection,
       };
     });
@@ -120,8 +122,8 @@ export class RulesService implements OnModuleInit {
       standards: dbRule.standards as string[],
       blocking: dbRule.blocking,
       enabled: dbRule.enabled,
-      description: cached?.description || '',
-      recommendation: cached?.recommendation || '',
+      description: cached?.description || "",
+      recommendation: cached?.recommendation || "",
       detection: cached?.detection,
     };
   }
@@ -147,8 +149,8 @@ export class RulesService implements OnModuleInit {
       standards: updated.standards as string[],
       blocking: updated.blocking,
       enabled: updated.enabled,
-      description: cached?.description || '',
-      recommendation: cached?.recommendation || '',
+      description: cached?.description || "",
+      recommendation: cached?.recommendation || "",
       detection: cached?.detection,
     };
 

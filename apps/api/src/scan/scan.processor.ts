@@ -1,18 +1,18 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
-import * as fs from 'fs';
-import * as path from 'path';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { ScanGateway } from './scan.gateway.js';
-import { FileClassifier } from '@slopshield/scanner-plugins';
-import { ScannerOrchestrator } from '../scanner/scanner.orchestrator.js';
-import { AIReviewerService } from '../ai-reviewer/ai-reviewer.service.js';
-import { ScoringService } from '../scoring/scoring.service.js';
-import { ReportService } from '../report/report.service.js';
-import { LarkService } from '../lark/lark.service.js';
+import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Logger } from "@nestjs/common";
+import { Job } from "bullmq";
+import * as fs from "fs";
+import * as path from "path";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { ScanGateway } from "./scan.gateway.js";
+import { FileClassifier } from "@slopshield/scanner-plugins";
+import { ScannerOrchestrator } from "../scanner/scanner.orchestrator.js";
+import { AIReviewerService } from "../ai-reviewer/ai-reviewer.service.js";
+import { ScoringService } from "../scoring/scoring.service.js";
+import { ReportService } from "../report/report.service.js";
+import { LarkService } from "../lark/lark.service.js";
 
-@Processor('scan-pipeline')
+@Processor("scan-pipeline")
 export class ScanProcessor extends WorkerHost {
   private readonly logger = new Logger(ScanProcessor.name);
   private readonly fileClassifier = new FileClassifier();
@@ -24,18 +24,25 @@ export class ScanProcessor extends WorkerHost {
     private readonly aiReviewer: AIReviewerService,
     private readonly scoringService: ScoringService,
     private readonly reportService: ReportService,
-    private readonly larkService: LarkService
+    private readonly larkService: LarkService,
   ) {
     super();
   }
 
   public async process(job: Job<any, any, string>): Promise<any> {
     const { scanId, scanDir } = job.data;
-    this.logger.log(`Processing scan job pipeline: ${scanId} in directory: ${scanDir}`);
+    this.logger.log(
+      `Processing scan job pipeline: ${scanId} in directory: ${scanDir}`,
+    );
 
     try {
       // 1. Stage: FETCHING
-      await this.updateProgress(scanId, 'fetching', 10, 'Indexing source code files...');
+      await this.updateProgress(
+        scanId,
+        "fetching",
+        10,
+        "Indexing source code files...",
+      );
       if (!fs.existsSync(scanDir)) {
         throw new Error(`Scan directory not found: ${scanDir}`);
       }
@@ -44,7 +51,12 @@ export class ScanProcessor extends WorkerHost {
       this.logger.log(`Found ${files.length} files to scan in ${scanId}`);
 
       // 2. Stage: CLASSIFYING
-      await this.updateProgress(scanId, 'classifying', 25, 'Classifying file types and environments...');
+      await this.updateProgress(
+        scanId,
+        "classifying",
+        25,
+        "Classifying file types and environments...",
+      );
       const classified = this.fileClassifier.classifyFiles(files);
 
       // Store in DB
@@ -60,29 +72,41 @@ export class ScanProcessor extends WorkerHost {
       });
 
       // 3. Stage: SCANNING (Static analysis)
-      await this.updateProgress(scanId, 'scanning', 40, 'Executing static analysis security scanners...');
+      await this.updateProgress(
+        scanId,
+        "scanning",
+        40,
+        "Executing static analysis security scanners...",
+      );
       const staticFindings = await this.orchestrator.runAll({
         scanDir,
-        files: classified.filter((f) => f.fileType !== 'dependency').map((f) => f.path),
+        files: classified
+          .filter((f) => f.fileType !== "dependency")
+          .map((f) => f.path),
         scanId,
       });
 
       // 4. Stage: AI-REVIEWING
-      await this.updateProgress(scanId, 'ai-reviewing', 60, 'Initiating LLM codebase review pass...');
+      await this.updateProgress(
+        scanId,
+        "ai-reviewing",
+        60,
+        "Initiating LLM codebase review pass...",
+      );
       let aiFindings: any[] = [];
-      let aiSummary = 'No issues identified.';
+      let aiSummary = "No issues identified.";
       let refactorPlan: string[] = [];
       let recommendedTests: string[] = [];
 
       // We only run AI review on actual source code files, and limit total context size
       const codeFiles = classified
-        .filter((f) => f.fileType === 'frontend' || f.fileType === 'backend')
+        .filter((f) => f.fileType === "frontend" || f.fileType === "backend")
         .slice(0, 10); // Cap at 10 files for hackathon context limit
 
       if (codeFiles.length > 0) {
         const fileContents = codeFiles.map((f) => ({
           path: f.path,
-          content: fs.readFileSync(path.join(scanDir, f.path), 'utf8'),
+          content: fs.readFileSync(path.join(scanDir, f.path), "utf8"),
           language: f.language,
           isFrontend: f.isFrontend,
           isBackend: f.isBackend,
@@ -95,7 +119,11 @@ export class ScanProcessor extends WorkerHost {
         }));
 
         try {
-          const aiResult = await this.aiReviewer.reviewCode(scanId, fileContents, existingSummary);
+          const aiResult = await this.aiReviewer.reviewCode(
+            scanId,
+            fileContents,
+            existingSummary,
+          );
           aiFindings = aiResult.findings;
           aiSummary = aiResult.summary;
           refactorPlan = aiResult.refactor_plan;
@@ -144,7 +172,7 @@ export class ScanProcessor extends WorkerHost {
           suggestedTests: [],
           blocking: af.blocking,
           confidence: af.confidence,
-          source: 'ai-reviewer',
+          source: "ai-reviewer",
           codeSnippet: null,
         });
       }
@@ -161,7 +189,12 @@ export class ScanProcessor extends WorkerHost {
       });
 
       // 5. Stage: SCORING
-      await this.updateProgress(scanId, 'scoring', 80, 'Computing SlopShield quality scores...');
+      await this.updateProgress(
+        scanId,
+        "scoring",
+        80,
+        "Computing SlopShield quality scores...",
+      );
       const score = this.scoringService.calculateScore(savedFindings as any);
 
       // Save scoring and AI findings back to ScanJob
@@ -184,10 +217,20 @@ export class ScanProcessor extends WorkerHost {
       });
 
       // 6. Stage: REPORTING
-      await this.updateProgress(scanId, 'reporting', 90, 'Packaging final engineering report...');
+      await this.updateProgress(
+        scanId,
+        "reporting",
+        90,
+        "Packaging final engineering report...",
+      );
 
       // 7. Stage: NOTIFYING
-      await this.updateProgress(scanId, 'notifying', 95, 'Pushing card notification to Lark...');
+      await this.updateProgress(
+        scanId,
+        "notifying",
+        95,
+        "Pushing card notification to Lark...",
+      );
       try {
         await this.larkService.sendScanCard(scanId);
       } catch (larkErr: any) {
@@ -195,7 +238,12 @@ export class ScanProcessor extends WorkerHost {
       }
 
       // 8. Stage: COMPLETED
-      await this.updateProgress(scanId, 'completed', 100, 'Scan completed successfully.');
+      await this.updateProgress(
+        scanId,
+        "completed",
+        100,
+        "Scan completed successfully.",
+      );
       this.logger.log(`Scan job completed: ${scanId}`);
 
       // Clean up directory
@@ -207,19 +255,29 @@ export class ScanProcessor extends WorkerHost {
       await this.prisma.scanJob.update({
         where: { id: scanId },
         data: {
-          status: 'failed',
-          statusResult: 'blocked',
+          status: "failed",
+          statusResult: "blocked",
           completedAt: new Date(),
         },
       });
-      await this.updateProgress(scanId, 'failed', 100, `Scan failed: ${err.message}`);
+      await this.updateProgress(
+        scanId,
+        "failed",
+        100,
+        `Scan failed: ${err.message}`,
+      );
       if (fs.existsSync(scanDir)) {
         fs.rmSync(scanDir, { recursive: true, force: true });
       }
     }
   }
 
-  private async updateProgress(scanId: string, stage: any, percentage: number, message: string): Promise<void> {
+  private async updateProgress(
+    scanId: string,
+    stage: any,
+    percentage: number,
+    message: string,
+  ): Promise<void> {
     await this.prisma.scanJob.update({
       where: { id: scanId },
       data: { status: stage },

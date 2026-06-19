@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient } from "@tanstack/react-query";
 
 /**
  * Shared QueryClient instance used throughout the app.
@@ -25,7 +25,7 @@ let browserQueryClient: QueryClient | undefined;
  * Always creates a fresh one on the server to avoid cross-request leaks.
  */
 export function getQueryClient(): QueryClient {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return makeQueryClient();
   }
   if (!browserQueryClient) {

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -9,11 +9,11 @@ import { z } from 'zod';
  * Determines point deductions when computing the overall scan score.
  */
 export const FindingSeverityEnum = z.enum([
-  'critical',
-  'high',
-  'medium',
-  'low',
-  'info',
+  "critical",
+  "high",
+  "medium",
+  "low",
+  "info",
 ]);
 
 /** TypeScript union type derived from the FindingSeverity Zod enum. */
@@ -24,16 +24,16 @@ export type FindingSeverity = z.infer<typeof FindingSeverityEnum>;
  * Maps directly to the weighted category scores on the scan dashboard.
  */
 export const FindingCategoryEnum = z.enum([
-  'backend-security',
-  'frontend-security',
-  'backend-architecture',
-  'frontend-architecture',
-  'maintainability',
-  'testability',
-  'accessibility',
-  'reliability',
-  'documentation',
-  'general',
+  "backend-security",
+  "frontend-security",
+  "backend-architecture",
+  "frontend-architecture",
+  "maintainability",
+  "testability",
+  "accessibility",
+  "reliability",
+  "documentation",
+  "general",
 ]);
 
 /** TypeScript union type derived from the FindingCategory Zod enum. */
@@ -44,12 +44,12 @@ export type FindingCategory = z.infer<typeof FindingCategoryEnum>;
  * Used for attribution, deduplication, and filtering in the UI.
  */
 export const FindingSourceEnum = z.enum([
-  'eslint',
-  'typescript',
-  'secret-scanner',
-  'semgrep',
-  'rules-engine',
-  'ai-reviewer',
+  "eslint",
+  "typescript",
+  "secret-scanner",
+  "semgrep",
+  "rules-engine",
+  "ai-reviewer",
 ]);
 
 /** TypeScript union type derived from the FindingSource Zod enum. */

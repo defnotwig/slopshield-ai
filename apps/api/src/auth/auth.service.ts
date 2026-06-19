@@ -1,8 +1,12 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as argon2 from 'argon2';
-import * as jwt from 'jsonwebtoken';
-import { PrismaService } from '../prisma/prisma.service.js';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as argon2 from "argon2";
+import * as jwt from "jsonwebtoken";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
 export class AuthService {
@@ -13,12 +17,24 @@ export class AuthService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
-    this.jwtSecret = this.configService.get<string>('JWT_SECRET', 'fallback_secret');
-    this.jwtExpiration = this.configService.get<string>('JWT_EXPIRATION', '15m');
-    this.refreshSecret = this.configService.get<string>('REFRESH_SECRET', 'fallback_refresh_secret');
-    this.refreshExpiration = this.configService.get<string>('REFRESH_EXPIRATION', '7d');
+    this.jwtSecret = this.configService.get<string>(
+      "JWT_SECRET",
+      "fallback_secret",
+    );
+    this.jwtExpiration = this.configService.get<string>(
+      "JWT_EXPIRATION",
+      "15m",
+    );
+    this.refreshSecret = this.configService.get<string>(
+      "REFRESH_SECRET",
+      "fallback_refresh_secret",
+    );
+    this.refreshExpiration = this.configService.get<string>(
+      "REFRESH_EXPIRATION",
+      "7d",
+    );
   }
 
   public async register(payload: any): Promise<any> {
@@ -29,7 +45,9 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('A user with this email address already exists');
+      throw new ConflictException(
+        "A user with this email address already exists",
+      );
     }
 
     const hashedPassword = await argon2.hash(password);
@@ -39,7 +57,7 @@ export class AuthService {
         name,
         email,
         password: hashedPassword,
-        role: role || 'developer',
+        role: role || "developer",
         larkUserId,
       },
     });
@@ -60,12 +78,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password credentials');
+      throw new UnauthorizedException("Invalid email or password credentials");
     }
 
     const isPasswordValid = await argon2.verify(user.password, password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password credentials');
+      throw new UnauthorizedException("Invalid email or password credentials");
     }
 
     const tokens = this.generateTokens(user);
@@ -84,7 +102,7 @@ export class AuthService {
       });
 
       if (!user) {
-        throw new UnauthorizedException('User no longer exists');
+        throw new UnauthorizedException("User no longer exists");
       }
 
       const tokens = this.generateTokens(user);
@@ -92,7 +110,7 @@ export class AuthService {
         accessToken: tokens.accessToken,
       };
     } catch {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException("Invalid or expired refresh token");
     }
   }
 
@@ -102,13 +120,16 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User profile not found');
+      throw new UnauthorizedException("User profile not found");
     }
 
     return this.sanitizeUser(user);
   }
 
-  private generateTokens(user: any): { accessToken: string; refreshToken: string } {
+  private generateTokens(user: any): {
+    accessToken: string;
+    refreshToken: string;
+  } {
     const payload = {
       sub: user.id,
       email: user.email,

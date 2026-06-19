@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -9,17 +9,17 @@ import { z } from 'zod';
  * The backend state machine enforces valid transitions between these stages.
  */
 export const ScanStatusEnum = z.enum([
-  'queued',
-  'fetching',
-  'classifying',
-  'scanning',
-  'ai-reviewing',
-  'scoring',
-  'reporting',
-  'notifying',
-  'completed',
-  'failed',
-  'cancelled',
+  "queued",
+  "fetching",
+  "classifying",
+  "scanning",
+  "ai-reviewing",
+  "scoring",
+  "reporting",
+  "notifying",
+  "completed",
+  "failed",
+  "cancelled",
 ]);
 
 /** TypeScript union type for scan pipeline stages. */
@@ -30,11 +30,11 @@ export type ScanStatus = z.infer<typeof ScanStatusEnum>;
  * Determined by the overall score and the presence of blocking findings.
  */
 export const ScanStatusResultEnum = z.enum([
-  'passed',
-  'passed-with-warnings',
-  'needs-cleanup',
-  'risky',
-  'blocked',
+  "passed",
+  "passed-with-warnings",
+  "needs-cleanup",
+  "risky",
+  "blocked",
 ]);
 
 /** TypeScript union type for scan result verdicts. */
@@ -45,11 +45,11 @@ export type ScanStatusResult = z.infer<typeof ScanStatusResultEnum>;
  * `full` runs every plugin; narrower modes skip irrelevant passes.
  */
 export const ScanModeEnum = z.enum([
-  'full',
-  'fast',
-  'security-only',
-  'frontend-only',
-  'backend-only',
+  "full",
+  "fast",
+  "security-only",
+  "frontend-only",
+  "backend-only",
 ]);
 
 /** TypeScript union type for scan modes. */
@@ -60,10 +60,10 @@ export type ScanMode = z.infer<typeof ScanModeEnum>;
  * Drives different ingestion flows in the fetching stage.
  */
 export const SourceTypeEnum = z.enum([
-  'paste',
-  'upload',
-  'repository',
-  'demo-sample',
+  "paste",
+  "upload",
+  "repository",
+  "demo-sample",
 ]);
 
 /** TypeScript union type for source types. */
@@ -73,11 +73,7 @@ export type SourceType = z.infer<typeof SourceTypeEnum>;
  * What initiated the scan.
  * Used for analytics, audit trails, and billing attribution.
  */
-export const TriggerTypeEnum = z.enum([
-  'manual',
-  'webhook',
-  'scheduled',
-]);
+export const TriggerTypeEnum = z.enum(["manual", "webhook", "scheduled"]);
 
 /** TypeScript union type for trigger types. */
 export type TriggerType = z.infer<typeof TriggerTypeEnum>;
@@ -122,7 +118,7 @@ export const CreateScanInputSchema = z.object({
   sourceRef: z.string().optional(),
 
   /** Which scanner plugins to run. Defaults to 'full'. */
-  scanMode: ScanModeEnum.default('full'),
+  scanMode: ScanModeEnum.default("full"),
 
   /** Identifier of the demo sample to scan (required for 'demo-sample'). */
   demoSampleId: z.string().optional(),

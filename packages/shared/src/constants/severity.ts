@@ -1,4 +1,4 @@
-import { FindingSeverity } from '../schemas/finding.schema.js';
+import { FindingSeverity } from "../schemas/finding.schema.js";
 
 /**
  * Point deductions applied to each category score for findings of a given severity.
@@ -24,11 +24,11 @@ export const SEVERITY_DEDUCTIONS: Record<FindingSeverity, number> = {
  * Used for sorting findings, computing lists, and prioritizing reviews.
  */
 export const SEVERITY_ORDER: FindingSeverity[] = [
-  'critical',
-  'high',
-  'medium',
-  'low',
-  'info',
+  "critical",
+  "high",
+  "medium",
+  "low",
+  "info",
 ];
 
 /**
@@ -36,9 +36,9 @@ export const SEVERITY_ORDER: FindingSeverity[] = [
  * Used in dashboards, reports, and Lark card UI.
  */
 export const SEVERITY_COLORS: Record<FindingSeverity, string> = {
-  critical: '#ef4444', // Red-500
-  high: '#f97316',     // Orange-500
-  medium: '#eab308',   // Yellow-500
-  low: '#3b82f6',      // Blue-500
-  info: '#6b7280',     // Gray-500
+  critical: "#ef4444", // Red-500
+  high: "#f97316", // Orange-500
+  medium: "#eab308", // Yellow-500
+  low: "#3b82f6", // Blue-500
+  info: "#6b7280", // Gray-500
 };

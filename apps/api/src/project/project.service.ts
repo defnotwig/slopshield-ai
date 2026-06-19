@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
 export class ProjectService {
@@ -24,7 +24,7 @@ export class ProjectService {
       where: { id },
       include: {
         scanJobs: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 10,
         },
       },

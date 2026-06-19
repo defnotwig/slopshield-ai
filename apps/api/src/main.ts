@@ -5,20 +5,20 @@
 // response compression, CORS configuration, and a global API prefix.
 // =============================================================================
 
-import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
-import helmet from 'helmet';
-import compression from 'compression';
+import { NestFactory } from "@nestjs/core";
+import { Logger } from "@nestjs/common";
+import helmet from "helmet";
+import compression from "compression";
 
-import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { AppModule } from "./app.module";
+import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
+import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 
 async function bootstrap(): Promise<void> {
-  const logger = new Logger('Bootstrap');
+  const logger = new Logger("Bootstrap");
 
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    logger: ["error", "warn", "log", "debug", "verbose"],
   });
 
   // ---------------------------------------------------------------------------
@@ -37,19 +37,19 @@ async function bootstrap(): Promise<void> {
   // CORS — Cross-Origin Resource Sharing allows the Next.js frontend
   // (default http://localhost:3000) to communicate with the API.
   // ---------------------------------------------------------------------------
-  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+  const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
   app.enableCors({
     origin: corsOrigin,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
   });
 
   // ---------------------------------------------------------------------------
   // Global prefix — all routes are mounted under /api so the frontend
   // reverse-proxy can easily distinguish API traffic.
   // ---------------------------------------------------------------------------
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix("api");
 
   // ---------------------------------------------------------------------------
   // Global filters & interceptors — applied to every incoming request.
@@ -63,8 +63,10 @@ async function bootstrap(): Promise<void> {
   const port = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 3001;
   await app.listen(port);
 
-  logger.log(`🛡️  SlopShield AI API is running on http://localhost:${port}/api`);
-  logger.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.log(
+    `🛡️  SlopShield AI API is running on http://localhost:${port}/api`,
+  );
+  logger.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
   logger.log(`🌐 CORS origin: ${corsOrigin}`);
 }
 

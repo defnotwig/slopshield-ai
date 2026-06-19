@@ -1,26 +1,33 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useProjects, useCreateProject } from '@/hooks/use-projects';
-import { FolderOpen, Settings, ListCollapse, Plus, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import Link from "next/link";
+import { useProjects, useCreateProject } from "@/hooks/use-projects";
+import {
+  FolderOpen,
+  Settings,
+  ListCollapse,
+  Plus,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 
 export default function ProjectsListPage() {
   const { data: projects = [], isLoading, isError, refetch } = useProjects();
   const createProjectMutation = useCreateProject();
 
   const [showAddForm, setShowAddForm] = useState(false);
-  const [name, setName] = useState('');
-  const [repositoryUrl, setRepositoryUrl] = useState('');
-  const [framework, setFramework] = useState('React / Next.js');
+  const [name, setName] = useState("");
+  const [repositoryUrl, setRepositoryUrl] = useState("");
+  const [framework, setFramework] = useState("React / Next.js");
   const [minimumScore, setMinimumScore] = useState(80);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState("");
 
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr('');
+    setErr("");
     if (!name) {
-      setErr('Project name is required.');
+      setErr("Project name is required.");
       return;
     }
 
@@ -31,12 +38,12 @@ export default function ProjectsListPage() {
         framework,
         minimumScore: Number(minimumScore),
       });
-      setName('');
-      setRepositoryUrl('');
+      setName("");
+      setRepositoryUrl("");
       setShowAddForm(false);
       refetch();
     } catch (e: any) {
-      setErr(e.message || 'Failed to create project.');
+      setErr(e.message || "Failed to create project.");
     }
   };
 
@@ -45,9 +52,12 @@ export default function ProjectsListPage() {
       {/* Title */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Monitored Projects</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Monitored Projects
+          </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Manage target codebases, configure quality thresholds, and trigger automated builds.
+            Manage target codebases, configure quality thresholds, and trigger
+            automated builds.
           </p>
         </div>
 
@@ -157,19 +167,23 @@ export default function ProjectsListPage() {
         </div>
       ) : projects.length === 0 ? (
         <div className="p-12 text-center text-sm text-gray-500">
-          No projects registered. Click &quot;Add Project&quot; above to setup your first monitored codebase!
+          No projects registered. Click &quot;Add Project&quot; above to setup
+          your first monitored codebase!
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((p: any) => (
-            <div key={p.id} className="glass-card bg-white dark:bg-gray-900/25 border border-gray-200 dark:border-gray-800 p-6 rounded-lg flex flex-col justify-between space-y-4 hover:scale-[1.01] transition-transform duration-200">
+            <div
+              key={p.id}
+              className="glass-card bg-white dark:bg-gray-900/25 border border-gray-200 dark:border-gray-800 p-6 rounded-lg flex flex-col justify-between space-y-4 hover:scale-[1.01] transition-transform duration-200"
+            >
               <div className="space-y-2">
                 <div className="flex justify-between items-start gap-4">
                   <div className="p-2.5 bg-cyan-500/10 rounded-lg text-cyan-500 border border-cyan-500/10">
                     <FolderOpen className="w-5.5 h-5.5" />
                   </div>
 
-                  <Link 
+                  <Link
                     href={`/projects/${p.id}/settings`}
                     className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-400 hover:text-gray-600 transition-colors"
                   >
@@ -204,7 +218,6 @@ export default function ProjectsListPage() {
           ))}
         </div>
       )}
-
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Finding, AIReviewResult } from '@slopshield/shared';
-import { GeminiProvider } from './providers/gemini.provider.js';
-import { StandardsMapper } from '../rules/standards-mapper.js';
+import { Injectable, Logger } from "@nestjs/common";
+import { Finding, AIReviewResult } from "@slopshield/shared";
+import { GeminiProvider } from "./providers/gemini.provider.js";
+import { StandardsMapper } from "../rules/standards-mapper.js";
 
 @Injectable()
 export class AIReviewerService {
@@ -9,7 +9,7 @@ export class AIReviewerService {
 
   constructor(
     private readonly provider: GeminiProvider,
-    private readonly standardsMapper: StandardsMapper
+    private readonly standardsMapper: StandardsMapper,
   ) {}
 
   /**
@@ -17,10 +17,18 @@ export class AIReviewerService {
    */
   public async reviewCode(
     scanId: string,
-    files: { path: string; content: string; language: string; isFrontend: boolean; isBackend: boolean }[],
-    existingFindings: { title: string; severity: string; file: string }[]
+    files: {
+      path: string;
+      content: string;
+      language: string;
+      isFrontend: boolean;
+      isBackend: boolean;
+    }[],
+    existingFindings: { title: string; severity: string; file: string }[],
   ): Promise<AIReviewResult> {
-    this.logger.log(`Dispatching AI review for scan ID ${scanId} with ${files.length} files...`);
+    this.logger.log(
+      `Dispatching AI review for scan ID ${scanId} with ${files.length} files...`,
+    );
 
     const result = await this.provider.reviewCode({
       scanId,
@@ -48,7 +56,10 @@ export class AIReviewerService {
   /**
    * Generates a step-by-step fix plan based on the findings list and file content context.
    */
-  public async generateFixPlan(findings: Finding[], codeContext: string): Promise<string[]> {
+  public async generateFixPlan(
+    findings: Finding[],
+    codeContext: string,
+  ): Promise<string[]> {
     return this.provider.generateFixPlan(findings, codeContext);
   }
 

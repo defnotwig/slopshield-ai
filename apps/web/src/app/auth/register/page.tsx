@@ -1,30 +1,30 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRegister } from '@/hooks/use-auth';
-import { ShieldAlert, KeyRound, Mail, User, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRegister } from "@/hooks/use-auth";
+import { ShieldAlert, KeyRound, Mail, User, Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('developer');
-  const [err, setErr] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("developer");
+  const [err, setErr] = useState("");
   const registerMutation = useRegister();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr('');
+    setErr("");
     if (!name || !email || !password) {
-      setErr('Please fill in all fields.');
+      setErr("Please fill in all fields.");
       return;
     }
 
     try {
       await registerMutation.mutateAsync({ name, email, password, role });
     } catch (e: any) {
-      setErr(e.message || 'Registration failed.');
+      setErr(e.message || "Registration failed.");
     }
   };
 
@@ -123,14 +123,19 @@ export default function RegisterPage() {
             disabled={registerMutation.isPending}
             className="w-full py-3 mt-2 font-bold rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-2"
           >
-            {registerMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            {registerMutation.isPending && (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            )}
             Register
           </button>
         </form>
 
         <div className="text-center text-xs text-muted-foreground">
-          Already have an account?{' '}
-          <Link href="/auth/login" className="font-bold text-ring hover:text-ring/90">
+          Already have an account?{" "}
+          <Link
+            href="/auth/login"
+            className="font-bold text-ring hover:text-ring/90"
+          >
             Sign in
           </Link>
         </div>

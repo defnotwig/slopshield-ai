@@ -7,10 +7,10 @@
  */
 
 const BASE_URL: string =
-  typeof window !== 'undefined' &&
-  (process.env.NEXT_PUBLIC_API_URL ?? '').length > 0
+  typeof window !== "undefined" &&
+  (process.env.NEXT_PUBLIC_API_URL ?? "").length > 0
     ? process.env.NEXT_PUBLIC_API_URL!
-    : 'http://localhost:3001/api';
+    : "http://localhost:3001/api";
 
 /** Structured error thrown by the API client on non-2xx responses. */
 export class ApiError extends Error {
@@ -20,7 +20,7 @@ export class ApiError extends Error {
     public readonly error?: string,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -32,23 +32,28 @@ async function request<T>(
   body?: unknown,
 ): Promise<T> {
   const headers: Record<string, string> = {};
-  const isFormData = typeof window !== 'undefined' && body instanceof FormData;
+  const isFormData = typeof window !== "undefined" && body instanceof FormData;
 
   if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
 
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('slopshield_token');
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("slopshield_token");
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
   }
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? (isFormData ? (body as any) : JSON.stringify(body)) : undefined,
+    body:
+      body !== undefined
+        ? isFormData
+          ? (body as any)
+          : JSON.stringify(body)
+        : undefined,
   });
 
   /* Empty 204 / 201 responses with no body */
@@ -71,18 +76,18 @@ async function request<T>(
 
 export const apiClient = {
   get<T>(path: string): Promise<T> {
-    return request<T>('GET', path);
+    return request<T>("GET", path);
   },
 
   post<T>(path: string, body?: unknown): Promise<T> {
-    return request<T>('POST', path, body);
+    return request<T>("POST", path, body);
   },
 
   patch<T>(path: string, body?: unknown): Promise<T> {
-    return request<T>('PATCH', path, body);
+    return request<T>("PATCH", path, body);
   },
 
   delete<T>(path: string): Promise<T> {
-    return request<T>('DELETE', path);
+    return request<T>("DELETE", path);
   },
 };

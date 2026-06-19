@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useLogin } from '@/hooks/use-auth';
-import { ShieldAlert, KeyRound, Mail, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import Link from "next/link";
+import { useLogin } from "@/hooks/use-auth";
+import { ShieldAlert, KeyRound, Mail, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [err, setErr] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
   const loginMutation = useLogin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr('');
+    setErr("");
     if (!email || !password) {
-      setErr('Please fill in all fields.');
+      setErr("Please fill in all fields.");
       return;
     }
 
     try {
       await loginMutation.mutateAsync({ email, password });
     } catch (e: any) {
-      setErr(e.message || 'Invalid email or password.');
+      setErr(e.message || "Invalid email or password.");
     }
   };
 
@@ -88,14 +88,19 @@ export default function LoginPage() {
             disabled={loginMutation.isPending}
             className="w-full py-3 mt-2 font-bold rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-2"
           >
-            {loginMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loginMutation.isPending && (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            )}
             Sign In
           </button>
         </form>
 
         <div className="text-center text-xs text-muted-foreground">
-          Don&apos;t have an account?{' '}
-          <Link href="/auth/register" className="font-bold text-ring hover:text-ring/90">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/auth/register"
+            className="font-bold text-ring hover:text-ring/90"
+          >
             Create account
           </Link>
         </div>

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Editor from '@monaco-editor/react';
-import { useTheme } from 'next-themes';
+import React from "react";
+import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
 
 interface CodeViewerProps {
   code: string;
@@ -10,7 +10,11 @@ interface CodeViewerProps {
   height?: string;
 }
 
-export function CodeViewer({ code, language = 'typescript', height = '300px' }: CodeViewerProps) {
+export function CodeViewer({
+  code,
+  language = "typescript",
+  height = "300px",
+}: CodeViewerProps) {
   const { theme } = useTheme();
 
   return (
@@ -19,19 +23,20 @@ export function CodeViewer({ code, language = 'typescript', height = '300px' }: 
         height={height}
         language={language}
         value={code}
-        theme={theme === 'dark' ? 'vs-dark' : 'light'}
+        theme={theme === "dark" ? "vs-dark" : "light"}
         options={{
           readOnly: true,
           minimap: { enabled: false },
           fontSize: 13,
-          fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, Courier New, monospace',
-          lineNumbers: 'on',
+          fontFamily:
+            "JetBrains Mono, Menlo, Monaco, Consolas, Courier New, monospace",
+          lineNumbers: "on",
           scrollBeyondLastLine: false,
           automaticLayout: true,
           padding: { top: 12, bottom: 12 },
           contextmenu: false,
           folding: true,
-          wordWrap: 'on',
+          wordWrap: "on",
         }}
         loading={
           <div className="flex items-center justify-center h-full text-xs font-mono text-gray-500 py-12">

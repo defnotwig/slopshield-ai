@@ -1,7 +1,12 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from 'recharts';
+import React from "react";
+import {
+  RadialBarChart,
+  RadialBar,
+  ResponsiveContainer,
+  PolarAngleAxis,
+} from "recharts";
 
 interface ScoreGaugeProps {
   score: number;
@@ -14,19 +19,19 @@ export function ScoreGauge({ score, size = 180 }: ScoreGaugeProps) {
 
   // Determine color based on score status
   const getColor = (s: number) => {
-    if (s >= 90) return 'var(--color-status-passed, #10b981)';
-    if (s >= 80) return 'var(--color-status-warning, #f59e0b)';
-    if (s >= 70) return 'var(--color-status-warning, #f59e0b)';
-    if (s >= 60) return 'var(--color-status-risky, #f97316)';
-    return 'var(--color-status-blocked, #ef4444)';
+    if (s >= 90) return "var(--color-status-passed, #10b981)";
+    if (s >= 80) return "var(--color-status-warning, #f59e0b)";
+    if (s >= 70) return "var(--color-status-warning, #f59e0b)";
+    if (s >= 60) return "var(--color-status-risky, #f97316)";
+    return "var(--color-status-blocked, #ef4444)";
   };
 
   const getStatusText = (s: number) => {
-    if (s >= 90) return 'PASSED';
-    if (s >= 80) return 'WARNING';
-    if (s >= 70) return 'CLEANUP';
-    if (s >= 60) return 'RISKY';
-    return 'BLOCKED';
+    if (s >= 90) return "PASSED";
+    if (s >= 80) return "WARNING";
+    if (s >= 70) return "CLEANUP";
+    if (s >= 60) return "RISKY";
+    return "BLOCKED";
   };
 
   const color = getColor(displayScore);
@@ -34,14 +39,17 @@ export function ScoreGauge({ score, size = 180 }: ScoreGaugeProps) {
 
   const data = [
     {
-      name: 'Score',
+      name: "Score",
       value: displayScore,
       fill: color,
     },
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center relative" style={{ width: size, height: size }}>
+    <div
+      className="flex flex-col items-center justify-center relative"
+      style={{ width: size, height: size }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <RadialBarChart
           cx="50%"
@@ -60,7 +68,7 @@ export function ScoreGauge({ score, size = 180 }: ScoreGaugeProps) {
             tick={false}
           />
           <RadialBar
-            background={{ fill: 'var(--color-border)', opacity: 0.5 }}
+            background={{ fill: "var(--color-border)", opacity: 0.5 }}
             dataKey="value"
             cornerRadius={0}
           />
@@ -72,18 +80,18 @@ export function ScoreGauge({ score, size = 180 }: ScoreGaugeProps) {
         <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
           Score
         </span>
-        <span 
-          className="font-display text-5xl font-extrabold transition-all duration-500 animate-count-up tracking-tight" 
+        <span
+          className="font-display text-5xl font-extrabold transition-all duration-500 animate-count-up tracking-tight"
           style={{ color }}
         >
           {displayScore}
         </span>
-        <span 
+        <span
           className="text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 mt-1 border rounded-none transition-all duration-300"
-          style={{ 
-            color, 
-            borderColor: `${color}44`, 
-            backgroundColor: `${color}11` 
+          style={{
+            color,
+            borderColor: `${color}44`,
+            backgroundColor: `${color}11`,
           }}
         >
           {status}

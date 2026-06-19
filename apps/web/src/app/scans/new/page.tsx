@@ -1,31 +1,44 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Editor from '@monaco-editor/react';
-import { useTheme } from 'next-themes';
-import { useProjects } from '@/hooks/use-projects';
-import { useCreateScan } from '@/hooks/use-scans';
-import { Terminal, Upload, Link2, Code, ShieldAlert, AlertTriangle, Play, HelpCircle } from 'lucide-react';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
+import { useProjects } from "@/hooks/use-projects";
+import { useCreateScan } from "@/hooks/use-scans";
+import {
+  Terminal,
+  Upload,
+  Link2,
+  Code,
+  ShieldAlert,
+  AlertTriangle,
+  Play,
+  HelpCircle,
+} from "lucide-react";
 
 export default function NewScanPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  
+
   const { data: projects = [] } = useProjects();
   const createScanMutation = useCreateScan();
 
-  const [activeTab, setActiveTab] = useState<'paste' | 'upload' | 'repo' | 'demo'>('paste');
-  const [projectId, setProjectId] = useState<string>('');
-  const [scanMode, setScanMode] = useState<string>('full');
+  const [activeTab, setActiveTab] = useState<
+    "paste" | "upload" | "repo" | "demo"
+  >("paste");
+  const [projectId, setProjectId] = useState<string>("");
+  const [scanMode, setScanMode] = useState<string>("full");
 
   // Input states
-  const [sourceContent, setSourceContent] = useState<string>('// Paste your code here...\n');
+  const [sourceContent, setSourceContent] = useState<string>(
+    "// Paste your code here...\n",
+  );
   const [file, setFile] = useState<File | null>(null);
-  const [sourceRef, setSourceRef] = useState<string>('');
-  const [demoSampleId, setDemoSampleId] = useState<string>('bad-frontend');
+  const [sourceRef, setSourceRef] = useState<string>("");
+  const [demoSampleId, setDemoSampleId] = useState<string>("bad-frontend");
 
-  const [err, setErr] = useState<string>('');
+  const [err, setErr] = useState<string>("");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -34,46 +47,49 @@ export default function NewScanPage() {
   };
 
   const handleRunScan = async () => {
-    setErr('');
+    setErr("");
     try {
       let body: any;
 
-      if (activeTab === 'paste') {
-        if (!sourceContent.trim() || sourceContent === '// Paste your code here...\n') {
-          throw new Error('Please paste some code content before starting.');
+      if (activeTab === "paste") {
+        if (
+          !sourceContent.trim() ||
+          sourceContent === "// Paste your code here...\n"
+        ) {
+          throw new Error("Please paste some code content before starting.");
         }
         body = {
           projectId: projectId || undefined,
-          sourceType: 'paste',
+          sourceType: "paste",
           sourceContent,
           scanMode,
         };
-      } else if (activeTab === 'upload') {
+      } else if (activeTab === "upload") {
         if (!file) {
-          throw new Error('Please select a ZIP file to upload.');
+          throw new Error("Please select a ZIP file to upload.");
         }
         const formData = new FormData();
-        formData.append('sourceType', 'upload');
-        formData.append('file', file);
-        formData.append('scanMode', scanMode);
+        formData.append("sourceType", "upload");
+        formData.append("file", file);
+        formData.append("scanMode", scanMode);
         if (projectId) {
-          formData.append('projectId', projectId);
+          formData.append("projectId", projectId);
         }
         body = formData;
-      } else if (activeTab === 'repo') {
+      } else if (activeTab === "repo") {
         if (!sourceRef.trim()) {
-          throw new Error('Please provide a repository URL.');
+          throw new Error("Please provide a repository URL.");
         }
         body = {
           projectId: projectId || undefined,
-          sourceType: 'git',
+          sourceType: "git",
           sourceRef,
           scanMode,
         };
-      } else if (activeTab === 'demo') {
+      } else if (activeTab === "demo") {
         body = {
           projectId: projectId || undefined,
-          sourceType: 'demo-sample',
+          sourceType: "demo-sample",
           demoSampleId,
           scanMode,
         };
@@ -82,7 +98,7 @@ export default function NewScanPage() {
       const scanJob = await createScanMutation.mutateAsync(body);
       router.push(`/scans/${scanJob.id}/progress`);
     } catch (e: any) {
-      setErr(e.message || 'Failed to start scan.');
+      setErr(e.message || "Failed to start scan.");
     }
   };
 
@@ -90,9 +106,12 @@ export default function NewScanPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Title Header */}
       <div className="border-b border-border pb-6">
-        <h2 className="font-display text-3xl font-bold uppercase tracking-wider text-foreground">Run New Code Scan</h2>
+        <h2 className="font-display text-3xl font-bold uppercase tracking-wider text-foreground">
+          Run New Code Scan
+        </h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Audits your source codebase and calculates the overall SlopShield quality report.
+          Audits your source codebase and calculates the overall SlopShield
+          quality report.
         </p>
       </div>
 
@@ -104,51 +123,50 @@ export default function NewScanPage() {
 
       {/* Main Form Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
         {/* Left Side: Input selectors & options */}
         <div className="lg:col-span-2 space-y-6">
           <div className="border border-border bg-card rounded-sm overflow-hidden flex flex-col h-[500px]">
             {/* Form tabs */}
             <div className="flex border-b border-border bg-muted/30">
               <button
-                onClick={() => setActiveTab('paste')}
+                onClick={() => setActiveTab("paste")}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-                  activeTab === 'paste'
-                    ? 'border-ring text-foreground bg-muted/60'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                  activeTab === "paste"
+                    ? "border-ring text-foreground bg-muted/60"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Code className="w-4 h-4" />
                 Paste Code
               </button>
               <button
-                onClick={() => setActiveTab('upload')}
+                onClick={() => setActiveTab("upload")}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-                  activeTab === 'upload'
-                    ? 'border-ring text-foreground bg-muted/60'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                  activeTab === "upload"
+                    ? "border-ring text-foreground bg-muted/60"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Upload className="w-4 h-4" />
                 ZIP Upload
               </button>
               <button
-                onClick={() => setActiveTab('repo')}
+                onClick={() => setActiveTab("repo")}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-                  activeTab === 'repo'
-                    ? 'border-ring text-foreground bg-muted/60'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                  activeTab === "repo"
+                    ? "border-ring text-foreground bg-muted/60"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Link2 className="w-4 h-4" />
                 Git Repo
               </button>
               <button
-                onClick={() => setActiveTab('demo')}
+                onClick={() => setActiveTab("demo")}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${
-                  activeTab === 'demo'
-                    ? 'border-ring text-foreground bg-muted/60'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                  activeTab === "demo"
+                    ? "border-ring text-foreground bg-muted/60"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Terminal className="w-4 h-4" />
@@ -158,24 +176,26 @@ export default function NewScanPage() {
 
             {/* Tab Panels */}
             <div className="flex-1 p-6 overflow-y-auto">
-              
               {/* Tab: Paste Code */}
-              {activeTab === 'paste' && (
+              {activeTab === "paste" && (
                 <div className="h-full flex flex-col space-y-3">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Paste Source Code</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Paste Source Code
+                  </span>
                   <div className="flex-1 border border-border rounded-sm overflow-hidden min-h-[300px]">
                     <Editor
                       height="100%"
                       defaultLanguage="typescript"
                       value={sourceContent}
-                      onChange={(val) => setSourceContent(val || '')}
-                      theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                      onChange={(val) => setSourceContent(val || "")}
+                      theme={theme === "dark" ? "vs-dark" : "light"}
                       options={{
                         fontSize: 13,
                         minimap: { enabled: false },
-                        wordWrap: 'on',
+                        wordWrap: "on",
                         automaticLayout: true,
-                        fontFamily: 'JetBrains Mono, Menlo, Monaco, Consolas, Courier New, monospace',
+                        fontFamily:
+                          "JetBrains Mono, Menlo, Monaco, Consolas, Courier New, monospace",
                       }}
                     />
                   </div>
@@ -183,14 +203,19 @@ export default function NewScanPage() {
               )}
 
               {/* Tab: ZIP Upload */}
-              {activeTab === 'upload' && (
+              {activeTab === "upload" && (
                 <div className="h-full flex flex-col justify-center items-center space-y-4 border border-dashed border-border rounded-sm p-8 bg-muted/10 hover:border-ring/30 transition-colors">
                   <div className="p-4 bg-muted border border-border rounded-sm text-foreground">
                     <Upload className="w-6 h-6 animate-pulse" />
                   </div>
                   <div className="text-center space-y-1">
-                    <p className="text-sm font-semibold">Click to select files or drag-and-drop</p>
-                    <p className="text-xs text-muted-foreground">ZIP archive containing frontend or backend codebase (max 50MB)</p>
+                    <p className="text-sm font-semibold">
+                      Click to select files or drag-and-drop
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      ZIP archive containing frontend or backend codebase (max
+                      50MB)
+                    </p>
                   </div>
                   <input
                     type="file"
@@ -200,16 +225,19 @@ export default function NewScanPage() {
                   />
                   {file && (
                     <div className="p-2.5 rounded-sm border border-ring/25 bg-ring/5 text-xs font-mono text-foreground">
-                      Selected: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                      Selected: {file.name} (
+                      {(file.size / (1024 * 1024)).toFixed(2)} MB)
                     </div>
                   )}
                 </div>
               )}
 
               {/* Tab: Git Repo */}
-              {activeTab === 'repo' && (
+              {activeTab === "repo" && (
                 <div className="space-y-4 max-w-md mx-auto">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Repository HTTPs URL</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                    Repository HTTPs URL
+                  </span>
                   <div className="relative">
                     <Link2 className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -221,30 +249,39 @@ export default function NewScanPage() {
                     />
                   </div>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Note: Public repositories only for local sandbox access. Private repositories require git SSH config variables initialized in .env.
+                    Note: Public repositories only for local sandbox access.
+                    Private repositories require git SSH config variables
+                    initialized in .env.
                   </p>
                 </div>
               )}
 
               {/* Tab: Demo Sample */}
-              {activeTab === 'demo' && (
+              {activeTab === "demo" && (
                 <div className="space-y-4">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Select Intentionally Sloppy Demo Sample</span>
-                  
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                    Select Intentionally Sloppy Demo Sample
+                  </span>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Sample 1 */}
                     <div
-                      onClick={() => setDemoSampleId('bad-frontend')}
+                      onClick={() => setDemoSampleId("bad-frontend")}
                       className={`p-5 border rounded-sm cursor-pointer transition-all flex flex-col justify-between ${
-                        demoSampleId === 'bad-frontend'
-                          ? 'border-ring bg-ring/5 text-foreground'
-                          : 'border-border bg-muted/10 hover:border-muted-foreground/35'
+                        demoSampleId === "bad-frontend"
+                          ? "border-ring bg-ring/5 text-foreground"
+                          : "border-border bg-muted/10 hover:border-muted-foreground/35"
                       }`}
                     >
                       <div>
-                        <h4 className="font-bold text-sm text-foreground">Sloppy Frontend Dashboard</h4>
+                        <h4 className="font-bold text-sm text-foreground">
+                          Sloppy Frontend Dashboard
+                        </h4>
                         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                          Intentionally messy React dashboard: God component (500+ lines), mixes concerns, clickable divs with no a11y, hardcoded API paths, dangerouslySetInnerHTML, side-effect loops, and zero tests.
+                          Intentionally messy React dashboard: God component
+                          (500+ lines), mixes concerns, clickable divs with no
+                          a11y, hardcoded API paths, dangerouslySetInnerHTML,
+                          side-effect loops, and zero tests.
                         </p>
                       </div>
                       <span className="text-[9px] mt-4 font-mono uppercase bg-destructive/10 text-destructive border border-destructive/20 px-2 py-0.5 rounded-sm w-fit">
@@ -254,17 +291,22 @@ export default function NewScanPage() {
 
                     {/* Sample 2 */}
                     <div
-                      onClick={() => setDemoSampleId('bad-backend')}
+                      onClick={() => setDemoSampleId("bad-backend")}
                       className={`p-5 border rounded-sm cursor-pointer transition-all flex flex-col justify-between ${
-                        demoSampleId === 'bad-backend'
-                          ? 'border-ring bg-ring/5 text-foreground'
-                          : 'border-border bg-muted/10 hover:border-muted-foreground/35'
+                        demoSampleId === "bad-backend"
+                          ? "border-ring bg-ring/5 text-foreground"
+                          : "border-border bg-muted/10 hover:border-muted-foreground/35"
                       }`}
                     >
                       <div>
-                        <h4 className="font-bold text-sm text-foreground">Sloppy Backend Controller</h4>
+                        <h4 className="font-bold text-sm text-foreground">
+                          Sloppy Backend Controller
+                        </h4>
                         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                          Messy NestJS Controller: Raw SQL concatenation (SQL injection vulnerable), hardcoded root database password secrets, missing DTO request validators, no exception filters, and zero test suites.
+                          Messy NestJS Controller: Raw SQL concatenation (SQL
+                          injection vulnerable), hardcoded root database
+                          password secrets, missing DTO request validators, no
+                          exception filters, and zero test suites.
                         </p>
                       </div>
                       <span className="text-[9px] mt-4 font-mono uppercase bg-severity-high/10 text-severity-high border border-severity-high/20 px-2 py-0.5 rounded-sm w-fit">
@@ -274,7 +316,6 @@ export default function NewScanPage() {
                   </div>
                 </div>
               )}
-
             </div>
           </div>
         </div>
@@ -298,7 +339,9 @@ export default function NewScanPage() {
               >
                 <option value="">None (Ad-Hoc Scan)</option>
                 {projects.map((p: any) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -322,10 +365,13 @@ export default function NewScanPage() {
             </div>
 
             {/* Warning Cards depending on selection */}
-            {activeTab === 'demo' && (
+            {activeTab === "demo" && (
               <div className="p-3 rounded-sm bg-severity-high/10 border border-severity-high/20 flex gap-2 items-start text-xs text-severity-high">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <p>Demo mode clones pre-defined messy source files into a clean scan context. Good for testing scoring engines.</p>
+                <p>
+                  Demo mode clones pre-defined messy source files into a clean
+                  scan context. Good for testing scoring engines.
+                </p>
               </div>
             )}
 
@@ -335,11 +381,12 @@ export default function NewScanPage() {
               className="w-full py-3.5 font-bold rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 shrink-0" />
-              {createScanMutation.isPending ? 'Queuing Pipeline...' : 'Start Audit Scan'}
+              {createScanMutation.isPending
+                ? "Queuing Pipeline..."
+                : "Start Audit Scan"}
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

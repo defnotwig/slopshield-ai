@@ -1,11 +1,11 @@
-import { LarkScanSummary } from '@slopshield/shared';
+import { LarkScanSummary } from "@slopshield/shared";
 
 export class LarkCardBuilder {
   public static buildPassedCard(summary: LarkScanSummary): any {
     const findingsList = summary.topFindings.map((f) => ({
-      tag: 'div',
+      tag: "div",
       text: {
-        tag: 'lark_md',
+        tag: "lark_md",
         content: `• **[${f.severity.toUpperCase()}]** ${f.title}`,
       },
     }));
@@ -15,40 +15,40 @@ export class LarkCardBuilder {
         wide_screen_mode: true,
       },
       header: {
-        template: 'green',
+        template: "green",
         title: {
-          tag: 'plain_text',
+          tag: "plain_text",
           content: `🛡️ SlopShield Passed: ${summary.repository}`,
         },
       },
       elements: [
         {
-          tag: 'markdown',
+          tag: "markdown",
           content: `**Scan ID:** ${summary.scanId}\n**Author:** ${summary.author}\n**Overall Score:** **${summary.score}/100** (Passed)`,
         },
         {
-          tag: 'hr',
+          tag: "hr",
         },
         {
-          tag: 'markdown',
+          tag: "markdown",
           content: `**Top Quality Observations:**`,
         },
         ...findingsList,
         {
-          tag: 'hr',
+          tag: "hr",
         },
         {
-          tag: 'action',
+          tag: "action",
           actions: [
             {
-              tag: 'button',
+              tag: "button",
               text: {
-                tag: 'plain_text',
-                content: 'View Full Report',
+                tag: "plain_text",
+                content: "View Full Report",
               },
-              type: 'primary',
+              type: "primary",
               value: {
-                action: 'view-report',
+                action: "view-report",
                 scanId: summary.scanId,
               },
             },
@@ -60,9 +60,9 @@ export class LarkCardBuilder {
 
   public static buildBlockedCard(summary: LarkScanSummary): any {
     const findingsList = summary.topFindings.map((f) => ({
-      tag: 'div',
+      tag: "div",
       text: {
-        tag: 'lark_md',
+        tag: "lark_md",
         content: `• **[${f.severity.toUpperCase()}]** ${f.title}`,
       },
     }));
@@ -72,52 +72,52 @@ export class LarkCardBuilder {
         wide_screen_mode: true,
       },
       header: {
-        template: 'red',
+        template: "red",
         title: {
-          tag: 'plain_text',
+          tag: "plain_text",
           content: `🚨 SlopShield Blocked: ${summary.repository}`,
         },
       },
       elements: [
         {
-          tag: 'markdown',
+          tag: "markdown",
           content: `**Scan ID:** ${summary.scanId}\n**Author:** ${summary.author}\n**Overall Score:** **${summary.score}/100** (Blocked)`,
         },
         {
-          tag: 'hr',
+          tag: "hr",
         },
         {
-          tag: 'markdown',
+          tag: "markdown",
           content: `**Critical Blockers Identified:**`,
         },
         ...findingsList,
         {
-          tag: 'hr',
+          tag: "hr",
         },
         {
-          tag: 'action',
+          tag: "action",
           actions: [
             {
-              tag: 'button',
+              tag: "button",
               text: {
-                tag: 'plain_text',
-                content: 'View Full Report',
+                tag: "plain_text",
+                content: "View Full Report",
               },
-              type: 'danger',
+              type: "danger",
               value: {
-                action: 'view-report',
+                action: "view-report",
                 scanId: summary.scanId,
               },
             },
             {
-              tag: 'button',
+              tag: "button",
               text: {
-                tag: 'plain_text',
-                content: 'Create Fix Tasks',
+                tag: "plain_text",
+                content: "Create Fix Tasks",
               },
-              type: 'primary',
+              type: "primary",
               value: {
-                action: 'create-tasks',
+                action: "create-tasks",
                 scanId: summary.scanId,
               },
             },

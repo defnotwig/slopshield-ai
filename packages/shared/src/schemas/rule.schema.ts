@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { FindingSeverityEnum } from './finding.schema.js';
+import { z } from "zod";
+import { FindingSeverityEnum } from "./finding.schema.js";
 
 // ---------------------------------------------------------------------------
 // Sub-schemas
@@ -30,11 +30,7 @@ export type RuleDetection = z.infer<typeof RuleDetectionSchema>;
  * The rules engine uses this to skip rules that are irrelevant for the
  * current scan mode (e.g. frontend-only scans skip 'backend' rules).
  */
-export const RuleAppliesToEnum = z.enum([
-  'frontend',
-  'backend',
-  'general',
-]);
+export const RuleAppliesToEnum = z.enum(["frontend", "backend", "general"]);
 
 /** TypeScript union for rule applicability targets. */
 export type RuleAppliesTo = z.infer<typeof RuleAppliesToEnum>;

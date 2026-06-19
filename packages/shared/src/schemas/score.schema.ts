@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { ScanStatusResultEnum } from './scan.schema.js';
+import { z } from "zod";
+import { ScanStatusResultEnum } from "./scan.schema.js";
 
 // ---------------------------------------------------------------------------
 // Category Scores

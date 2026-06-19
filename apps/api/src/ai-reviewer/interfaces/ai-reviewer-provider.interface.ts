@@ -1,8 +1,14 @@
-import { Finding, AIReviewResult } from '@slopshield/shared';
+import { Finding, AIReviewResult } from "@slopshield/shared";
 
 export interface ReviewInput {
   scanId: string;
-  files: { path: string; content: string; language: string; isFrontend: boolean; isBackend: boolean }[];
+  files: {
+    path: string;
+    content: string;
+    language: string;
+    isFrontend: boolean;
+    isBackend: boolean;
+  }[];
   existingFindings: { title: string; severity: string; file: string }[];
 }
 

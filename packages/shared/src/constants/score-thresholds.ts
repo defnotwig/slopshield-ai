@@ -1,4 +1,4 @@
-import { ScanStatusResult } from '../schemas/scan.schema.js';
+import { ScanStatusResult } from "../schemas/scan.schema.js";
 
 export interface ScoreThreshold {
   min: number;
@@ -16,42 +16,42 @@ export const SCORE_THRESHOLDS: ScoreThreshold[] = [
   {
     min: 90,
     max: 100,
-    status: 'passed',
-    label: 'Passed',
-    color: '#22c55e', // Green-500
-    description: 'Code meets production quality standards.',
+    status: "passed",
+    label: "Passed",
+    color: "#22c55e", // Green-500
+    description: "Code meets production quality standards.",
   },
   {
     min: 80,
     max: 89,
-    status: 'passed-with-warnings',
-    label: 'Passed with Warnings',
-    color: '#84cc16', // Lime-500
-    description: 'Minor issues detected, but code is acceptable for merge.',
+    status: "passed-with-warnings",
+    label: "Passed with Warnings",
+    color: "#84cc16", // Lime-500
+    description: "Minor issues detected, but code is acceptable for merge.",
   },
   {
     min: 70,
     max: 79,
-    status: 'needs-cleanup',
-    label: 'Needs Cleanup',
-    color: '#eab308', // Yellow-500
-    description: 'Several non-blocking issues require attention before merge.',
+    status: "needs-cleanup",
+    label: "Needs Cleanup",
+    color: "#eab308", // Yellow-500
+    description: "Several non-blocking issues require attention before merge.",
   },
   {
     min: 60,
     max: 69,
-    status: 'risky',
-    label: 'Risky',
-    color: '#f97316', // Orange-500
-    description: 'Significant quality issues detected. Review recommended.',
+    status: "risky",
+    label: "Risky",
+    color: "#f97316", // Orange-500
+    description: "Significant quality issues detected. Review recommended.",
   },
   {
     min: 0,
     max: 59,
-    status: 'blocked',
-    label: 'Blocked',
-    color: '#ef4444', // Red-500
-    description: 'Critical or numerous issues prevent merging this code.',
+    status: "blocked",
+    label: "Blocked",
+    color: "#ef4444", // Red-500
+    description: "Critical or numerous issues prevent merging this code.",
   },
 ];
 
@@ -62,8 +62,10 @@ export const SCORE_THRESHOLDS: ScoreThreshold[] = [
  * @returns The associated ScanStatusResult status
  */
 export function getScoreStatus(score: number): ScanStatusResult {
-  const threshold = SCORE_THRESHOLDS.find((t) => score >= t.min && score <= t.max);
-  return threshold ? threshold.status : 'blocked';
+  const threshold = SCORE_THRESHOLDS.find(
+    (t) => score >= t.min && score <= t.max,
+  );
+  return threshold ? threshold.status : "blocked";
 }
 
 /**
@@ -73,8 +75,10 @@ export function getScoreStatus(score: number): ScanStatusResult {
  * @returns The hex color string
  */
 export function getScoreColor(score: number): string {
-  const threshold = SCORE_THRESHOLDS.find((t) => score >= t.min && score <= t.max);
-  return threshold ? threshold.color : '#ef4444';
+  const threshold = SCORE_THRESHOLDS.find(
+    (t) => score >= t.min && score <= t.max,
+  );
+  return threshold ? threshold.color : "#ef4444";
 }
 
 /**
@@ -84,6 +88,8 @@ export function getScoreColor(score: number): string {
  * @returns The display label
  */
 export function getScoreLabel(score: number): string {
-  const threshold = SCORE_THRESHOLDS.find((t) => score >= t.min && score <= t.max);
-  return threshold ? threshold.label : 'Blocked';
+  const threshold = SCORE_THRESHOLDS.find(
+    (t) => score >= t.min && score <= t.max,
+  );
+  return threshold ? threshold.label : "Blocked";
 }

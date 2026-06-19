@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useScan } from '@/hooks/use-scans';
-import { useScanProgress } from '@/hooks/use-scan-progress';
-import { ScanTimeline } from '@/components/scan-timeline';
-import { ArrowRight, FileText, Loader2, AlertCircle } from 'lucide-react';
+import React, { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useScan } from "@/hooks/use-scans";
+import { useScanProgress } from "@/hooks/use-scan-progress";
+import { ScanTimeline } from "@/components/scan-timeline";
+import { ArrowRight, FileText, Loader2, AlertCircle } from "lucide-react";
 
 export default function ScanProgressPage() {
   const router = useRouter();
@@ -17,14 +17,14 @@ export default function ScanProgressPage() {
 
   // If the scan was already completed before loading this page, redirect directly to report
   useEffect(() => {
-    if (scan && scan.status === 'completed') {
+    if (scan && scan.status === "completed") {
       router.push(`/scans/${scanId}/report`);
     }
   }, [scan, scanId, router]);
 
   // If socket progress completes, redirect after a short delay
   useEffect(() => {
-    if (status === 'completed') {
+    if (status === "completed") {
       const timer = setTimeout(() => {
         router.push(`/scans/${scanId}/report`);
       }, 1500);
@@ -36,7 +36,9 @@ export default function ScanProgressPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
         <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
-        <p className="text-sm font-mono text-gray-500">Initializing scan channel context...</p>
+        <p className="text-sm font-mono text-gray-500">
+          Initializing scan channel context...
+        </p>
       </div>
     );
   }
@@ -48,7 +50,9 @@ export default function ScanProgressPage() {
           <AlertCircle className="w-8 h-8" />
         </div>
         <h3 className="text-lg font-bold">Failed to load scan job</h3>
-        <p className="text-xs text-gray-500">The scan job may not exist or database access failed.</p>
+        <p className="text-xs text-gray-500">
+          The scan job may not exist or database access failed.
+        </p>
       </div>
     );
   }
@@ -56,21 +60,30 @@ export default function ScanProgressPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div className="border-b border-border pb-6">
-        <h2 className="font-display text-3xl font-bold uppercase tracking-wider text-foreground">Scan Execution Pipeline</h2>
+        <h2 className="font-display text-3xl font-bold uppercase tracking-wider text-foreground">
+          Scan Execution Pipeline
+        </h2>
         <p className="text-xs text-muted-foreground mt-1 font-mono">
           ID: {scanId}
         </p>
       </div>
 
       <div className="border border-border bg-card p-8 rounded-sm">
-        <ScanTimeline 
-          currentStage={status} 
-          percentage={progress?.percentage ?? (scan.status === 'queued' ? 5 : 40)} 
-          message={progress?.message ?? (scan.status === 'queued' ? 'Enqueued and waiting for worker...' : 'Restoring state...')} 
+        <ScanTimeline
+          currentStage={status}
+          percentage={
+            progress?.percentage ?? (scan.status === "queued" ? 5 : 40)
+          }
+          message={
+            progress?.message ??
+            (scan.status === "queued"
+              ? "Enqueued and waiting for worker..."
+              : "Restoring state...")
+          }
         />
       </div>
 
-      {status === 'completed' && (
+      {status === "completed" && (
         <div className="flex justify-end">
           <button
             onClick={() => router.push(`/scans/${scanId}/report`)}
@@ -83,12 +96,14 @@ export default function ScanProgressPage() {
         </div>
       )}
 
-      {status === 'failed' && (
+      {status === "failed" && (
         <div className="p-4 rounded-sm bg-destructive/10 border border-destructive/20 flex gap-3 items-center text-destructive text-xs">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <div>
             <p className="font-bold">Scan Execution Blocked</p>
-            <p className="text-muted-foreground mt-0.5">The scan pipeline crashed. Check api logs or verify file formats.</p>
+            <p className="text-muted-foreground mt-0.5">
+              The scan pipeline crashed. Check api logs or verify file formats.
+            </p>
           </div>
         </div>
       )}

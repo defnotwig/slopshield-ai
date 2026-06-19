@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { LarkCardBuilder } from './card-builder.js';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { LarkCardBuilder } from "./card-builder.js";
 
 @Injectable()
 export class LarkService {
@@ -12,16 +12,18 @@ export class LarkService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {
-    this.appId = this.configService.get<string>('LARK_APP_ID', '');
-    this.appSecret = this.configService.get<string>('LARK_APP_SECRET', '');
-    this.webhookUrl = this.configService.get<string>('LARK_WEBHOOK_URL', '');
+    this.appId = this.configService.get<string>("LARK_APP_ID", "");
+    this.appSecret = this.configService.get<string>("LARK_APP_SECRET", "");
+    this.webhookUrl = this.configService.get<string>("LARK_WEBHOOK_URL", "");
   }
 
   public async sendScanCard(scanId: string, chatId?: string): Promise<boolean> {
     try {
-      this.logger.log(`Assembling Lark notification card for scan ID: ${scanId}...`);
+      this.logger.log(
+        `Assembling Lark notification card for scan ID: ${scanId}...`,
+      );
 
       const scan = await this.prisma.scanJob.findUnique({
         where: { id: scanId },
@@ -29,7 +31,7 @@ export class LarkService {
           project: true,
           findings: {
             where: { falsePositive: false },
-            orderBy: { severity: 'asc' },
+            orderBy: { severity: "asc" },
             take: 5,
           },
         },
@@ -47,16 +49,17 @@ export class LarkService {
 
       const summaryPayload = {
         scanId: scan.id,
-        repository: scan.sourceRef || scan.project?.name || 'Pasted Code',
-        author: 'Developer',
+        repository: scan.sourceRef || scan.project?.name || "Pasted Code",
+        author: "Developer",
         score: scan.overallScore || 0,
-        status: (scan.statusResult as any) || 'blocked',
+        status: (scan.statusResult as any) || "blocked",
         topFindings,
         reportUrl: `http://localhost:3000/scans/${scan.id}/report`,
       };
 
       const cardJson =
-        scan.statusResult === 'passed' || scan.statusResult === 'passed-with-warnings'
+        scan.statusResult === "passed" ||
+        scan.statusResult === "passed-with-warnings"
           ? LarkCardBuilder.buildPassedCard(summaryPayload)
           : LarkCardBuilder.buildBlockedCard(summaryPayload);
 
@@ -64,22 +67,24 @@ export class LarkService {
       await this.prisma.larkEvent.create({
         data: {
           scanJobId: scanId,
-          eventType: 'card-sent',
-          status: 'success',
+          eventType: "card-sent",
+          status: "success",
           payload: cardJson,
         },
       });
 
       if (!this.webhookUrl) {
-        this.logger.warn(`LARK_WEBHOOK_URL is not configured. Card JSON printed to console: ${JSON.stringify(cardJson, null, 2)}`);
+        this.logger.warn(
+          `LARK_WEBHOOK_URL is not configured. Card JSON printed to console: ${JSON.stringify(cardJson, null, 2)}`,
+        );
         return true;
       }
 
       const response = await fetch(this.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          msg_type: 'interactive',
+          msg_type: "interactive",
           card: cardJson,
         }),
       });
@@ -91,12 +96,17 @@ export class LarkService {
       this.logger.log(`Successfully sent Lark card to webhook.`);
       return true;
     } catch (err: any) {
-      this.logger.error(`Failed to send Lark notification card: ${err.message}`);
+      this.logger.error(
+        `Failed to send Lark notification card: ${err.message}`,
+      );
       return false;
     }
   }
 
-  public async createFixTask(findingId: string, assignTo?: string): Promise<any> {
+  public async createFixTask(
+    findingId: string,
+    assignTo?: string,
+  ): Promise<any> {
     try {
       this.logger.log(`Creating Lark task for finding ID: ${findingId}...`);
       const finding = await this.prisma.finding.findUnique({
@@ -122,8 +132,8 @@ export class LarkService {
           findingId,
           assignedTo: assignTo || null,
           title: `Fix finding: ${finding.title}`,
-          description: `Please resolve the following issue: ${finding.description || ''}\n\nFile: ${finding.filePath}\nLine: ${finding.lineNumber}\nRecommendation: ${finding.recommendation || ''}`,
-          status: 'open',
+          description: `Please resolve the following issue: ${finding.description || ""}\n\nFile: ${finding.filePath}\nLine: ${finding.lineNumber}\nRecommendation: ${finding.recommendation || ""}`,
+          status: "open",
           larkTaskId: `lark-task-mock-${Math.random().toString(36).substring(7)}`,
         },
       });

@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { ScoringService } from './scoring.service.js';
+import { Module } from "@nestjs/common";
+import { ScoringService } from "./scoring.service.js";
 
 @Module({
   providers: [ScoringService],

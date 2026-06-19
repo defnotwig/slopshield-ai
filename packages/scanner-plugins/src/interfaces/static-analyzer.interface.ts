@@ -1,4 +1,4 @@
-import { Finding } from '@slopshield/shared';
+import { Finding } from "@slopshield/shared";
 
 export interface AnalysisContext {
   /** Absolute path to the directory containing files to analyze */
@@ -15,7 +15,7 @@ export interface AnalysisResult {
   /** Whether the analyzer ran successfully */
   success: boolean;
   /** Normalized findings */
-  findings: Omit<Finding, 'id' | 'scanId'>[];
+  findings: Omit<Finding, "id" | "scanId">[];
   /** Error message if the analyzer failed */
   error?: string;
   /** Duration in milliseconds */

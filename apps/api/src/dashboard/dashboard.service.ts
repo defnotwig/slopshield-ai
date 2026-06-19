@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
 export class DashboardService {
@@ -15,7 +15,7 @@ export class DashboardService {
     const completedScans = await this.prisma.scanJob.findMany({
       where: {
         ...filter,
-        status: 'completed',
+        status: "completed",
         overallScore: { not: null },
       },
       select: {
@@ -23,21 +23,27 @@ export class DashboardService {
       },
     });
 
-    const avgScore = completedScans.length > 0
-      ? Math.round(completedScans.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / completedScans.length)
-      : 100;
+    const avgScore =
+      completedScans.length > 0
+        ? Math.round(
+            completedScans.reduce(
+              (acc, curr) => acc + (curr.overallScore || 0),
+              0,
+            ) / completedScans.length,
+          )
+        : 100;
 
     const blockedCount = await this.prisma.scanJob.count({
       where: {
         ...filter,
-        statusResult: 'blocked',
+        statusResult: "blocked",
       },
     });
 
     const passedCount = await this.prisma.scanJob.count({
       where: {
         ...filter,
-        statusResult: { in: ['passed', 'passed-with-warnings'] },
+        statusResult: { in: ["passed", "passed-with-warnings"] },
       },
     });
 
@@ -56,11 +62,11 @@ export class DashboardService {
     const scans = await this.prisma.scanJob.findMany({
       where: {
         ...filter,
-        status: 'completed',
+        status: "completed",
         overallScore: { not: null },
       },
       orderBy: {
-        createdAt: 'asc',
+        createdAt: "asc",
       },
       take: 20,
       select: {
@@ -72,7 +78,7 @@ export class DashboardService {
 
     return scans.map((s) => ({
       scanId: s.id,
-      date: s.createdAt.toISOString().split('T')[0],
+      date: s.createdAt.toISOString().split("T")[0],
       score: s.overallScore,
     }));
   }
@@ -82,7 +88,7 @@ export class DashboardService {
 
     // Group findings by category
     const categoriesGroup = await this.prisma.finding.groupBy({
-      by: ['category'],
+      by: ["category"],
       where: {
         ...filter,
         falsePositive: false,
@@ -92,7 +98,7 @@ export class DashboardService {
       },
       orderBy: {
         _count: {
-          id: 'desc',
+          id: "desc",
         },
       },
     });
@@ -120,7 +126,8 @@ export class DashboardService {
     const standardsMap: Record<string, number> = {};
     for (const f of findings) {
       if (f.standardReference) {
-        standardsMap[f.standardReference] = (standardsMap[f.standardReference] || 0) + 1;
+        standardsMap[f.standardReference] =
+          (standardsMap[f.standardReference] || 0) + 1;
       }
     }
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 import {
   Finding,
   FindingCategory,
@@ -9,7 +9,7 @@ import {
   SEVERITY_DEDUCTIONS,
   AUTO_BLOCK_CONDITIONS,
   getScoreStatus,
-} from '@slopshield/shared';
+} from "@slopshield/shared";
 
 @Injectable()
 export class ScoringService {
@@ -23,11 +23,13 @@ export class ScoringService {
    * @returns Detailed ScanScore calculation object
    */
   public calculateScore(findings: Finding[]): ScanScore {
-    const criticalCount = findings.filter((f) => f.severity === 'critical').length;
-    const highCount = findings.filter((f) => f.severity === 'high').length;
-    const mediumCount = findings.filter((f) => f.severity === 'medium').length;
-    const lowCount = findings.filter((f) => f.severity === 'low').length;
-    const infoCount = findings.filter((f) => f.severity === 'info').length;
+    const criticalCount = findings.filter(
+      (f) => f.severity === "critical",
+    ).length;
+    const highCount = findings.filter((f) => f.severity === "high").length;
+    const mediumCount = findings.filter((f) => f.severity === "medium").length;
+    const lowCount = findings.filter((f) => f.severity === "low").length;
+    const infoCount = findings.filter((f) => f.severity === "info").length;
 
     // 1. Initialize all categories to base score of 100
     const categoryScores: CategoryScores = {
@@ -42,10 +44,10 @@ export class ScoringService {
 
     // Keep temporary internal track of raw category scores (0-100)
     const rawScores: Record<FindingCategory, number> = {
-      'backend-security': 100,
-      'frontend-security': 100,
-      'backend-architecture': 100,
-      'frontend-architecture': 100,
+      "backend-security": 100,
+      "frontend-security": 100,
+      "backend-architecture": 100,
+      "frontend-architecture": 100,
       maintainability: 100,
       testability: 100,
       accessibility: 100,
@@ -56,14 +58,25 @@ export class ScoringService {
 
     // 2. Apply deductions per finding
     for (const finding of findings) {
-      const deduction = SEVERITY_DEDUCTIONS[finding.severity as FindingSeverity] || 0;
-      rawScores[finding.category as FindingCategory] = Math.max(0, rawScores[finding.category as FindingCategory] - deduction);
+      const deduction =
+        SEVERITY_DEDUCTIONS[finding.severity as FindingSeverity] || 0;
+      rawScores[finding.category as FindingCategory] = Math.max(
+        0,
+        rawScores[finding.category as FindingCategory] - deduction,
+      );
     }
 
     // 3. Map raw categories back to the CategoryScores output schema fields
     // We average split categories to fit into CategoryScores fields
-    categoryScores.security = Math.min(100, (rawScores['backend-security'] + rawScores['frontend-security']) / 2);
-    categoryScores.architecture = Math.min(100, (rawScores['backend-architecture'] + rawScores['frontend-architecture']) / 2);
+    categoryScores.security = Math.min(
+      100,
+      (rawScores["backend-security"] + rawScores["frontend-security"]) / 2,
+    );
+    categoryScores.architecture = Math.min(
+      100,
+      (rawScores["backend-architecture"] + rawScores["frontend-architecture"]) /
+        2,
+    );
     categoryScores.maintainability = rawScores.maintainability;
     categoryScores.testability = rawScores.testability;
     categoryScores.frontend = rawScores.accessibility; // Maps accessibility -> frontend in UI scorecard
@@ -88,7 +101,8 @@ export class ScoringService {
       const matchesCondition = findings.some(
         (f) =>
           f.blocking &&
-          (f.category === condition.category || f.title.toLowerCase().includes(condition.title.toLowerCase()))
+          (f.category === condition.category ||
+            f.title.toLowerCase().includes(condition.title.toLowerCase())),
       );
 
       if (matchesCondition) {
@@ -99,13 +113,15 @@ export class ScoringService {
     // Any manual blocking flag on findings defaults to blocked
     const hasManualBlock = findings.some((f) => f.blocking);
     if (hasManualBlock && blockedReasons.length === 0) {
-      blockedReasons.push('Scan contains critical severity or rule violations marked as blocking.');
+      blockedReasons.push(
+        "Scan contains critical severity or rule violations marked as blocking.",
+      );
     }
 
     // Determine final status verdict based on overall score, but downgrade to 'blocked' if blockedReasons exist
     let statusResult = getScoreStatus(overallScore);
     if (blockedReasons.length > 0) {
-      statusResult = 'blocked';
+      statusResult = "blocked";
     }
 
     return {

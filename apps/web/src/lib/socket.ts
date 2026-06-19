@@ -4,13 +4,13 @@
  * Connects to the `/scans` namespace with auto-reconnect and
  * exponential backoff.
  */
-import { io, type Socket } from 'socket.io-client';
+import { io, type Socket } from "socket.io-client";
 
 const SOCKET_URL: string =
-  typeof window !== 'undefined' &&
-  (process.env.NEXT_PUBLIC_API_URL ?? '').length > 0
-    ? process.env.NEXT_PUBLIC_API_URL!.replace(/\/api$/, '')
-    : 'http://localhost:3001';
+  typeof window !== "undefined" &&
+  (process.env.NEXT_PUBLIC_API_URL ?? "").length > 0
+    ? process.env.NEXT_PUBLIC_API_URL!.replace(/\/api$/, "")
+    : "http://localhost:3001";
 
 let socket: Socket | null = null;
 
@@ -21,7 +21,7 @@ let socket: Socket | null = null;
 export function getSocket(): Socket {
   if (!socket) {
     socket = io(`${SOCKET_URL}/scans`, {
-      transports: ['websocket', 'polling'],
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
@@ -29,16 +29,16 @@ export function getSocket(): Socket {
       autoConnect: true,
     });
 
-    socket.on('connect', () => {
-      console.log('[SlopShield] Socket connected:', socket?.id);
+    socket.on("connect", () => {
+      console.log("[SlopShield] Socket connected:", socket?.id);
     });
 
-    socket.on('disconnect', (reason) => {
-      console.log('[SlopShield] Socket disconnected:', reason);
+    socket.on("disconnect", (reason) => {
+      console.log("[SlopShield] Socket disconnected:", reason);
     });
 
-    socket.on('connect_error', (err) => {
-      console.warn('[SlopShield] Socket connection error:', err.message);
+    socket.on("connect_error", (err) => {
+      console.warn("[SlopShield] Socket connection error:", err.message);
     });
   }
 
@@ -66,7 +66,7 @@ export function subscribeToScan(
   const s = getSocket();
 
   /* Join the scan-specific room */
-  s.emit('subscribe', { scanId });
+  s.emit("subscribe", { scanId });
 
   const handler = (data: ScanProgressEvent) => {
     if (data.scanId === scanId) {
@@ -74,10 +74,10 @@ export function subscribeToScan(
     }
   };
 
-  s.on('scan-progress', handler);
+  s.on("scan-progress", handler);
 
   return () => {
-    s.off('scan-progress', handler);
-    s.emit('unsubscribe', { scanId });
+    s.off("scan-progress", handler);
+    s.emit("unsubscribe", { scanId });
   };
 }

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { SeverityBadge } from '@/components/severity-badge';
-import { Search, Eye } from 'lucide-react';
+import React, { useState } from "react";
+import { SeverityBadge } from "@/components/severity-badge";
+import { Search, Eye } from "lucide-react";
 
 interface Finding {
   id: string;
@@ -21,29 +21,35 @@ interface FindingsTableProps {
   onSelectFinding: (finding: Finding) => void;
 }
 
-export function FindingsTable({ findings, onSelectFinding }: FindingsTableProps) {
-  const [filterSeverity, setFilterSeverity] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+export function FindingsTable({
+  findings,
+  onSelectFinding,
+}: FindingsTableProps) {
+  const [filterSeverity, setFilterSeverity] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const severities = ['all', 'critical', 'high', 'medium', 'low', 'info'];
+  const severities = ["all", "critical", "high", "medium", "low", "info"];
   const categories = [
-    'all',
-    'security',
-    'maintainability',
-    'architecture',
-    'testability',
-    'frontend',
-    'backend',
+    "all",
+    "security",
+    "maintainability",
+    "architecture",
+    "testability",
+    "frontend",
+    "backend",
   ];
 
   // Filtering logic
   const filteredFindings = findings.filter((f) => {
-    const matchesSeverity = filterSeverity === 'all' || f.severity.toLowerCase() === filterSeverity;
+    const matchesSeverity =
+      filterSeverity === "all" || f.severity.toLowerCase() === filterSeverity;
     const matchesCategory =
-      filterCategory === 'all' || f.category.toLowerCase().includes(filterCategory);
-    
-    const searchText = `${f.title} ${f.filePath || ''} ${f.description || ''}`.toLowerCase();
+      filterCategory === "all" ||
+      f.category.toLowerCase().includes(filterCategory);
+
+    const searchText =
+      `${f.title} ${f.filePath || ""} ${f.description || ""}`.toLowerCase();
     const matchesSearch = searchText.includes(searchQuery.toLowerCase());
 
     return matchesSeverity && matchesCategory && matchesSearch;
@@ -67,28 +73,36 @@ export function FindingsTable({ findings, onSelectFinding }: FindingsTableProps)
         <div className="flex flex-wrap gap-4 items-center w-full md:w-auto">
           {/* Severity Filter */}
           <div className="flex flex-col w-full sm:w-auto">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Severity</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+              Severity
+            </span>
             <select
               value={filterSeverity}
               onChange={(e) => setFilterSeverity(e.target.value)}
               className="px-3 py-1.5 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring capitalize"
             >
               {severities.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
           </div>
 
           {/* Category Filter */}
           <div className="flex flex-col w-full sm:w-auto">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Category</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+              Category
+            </span>
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
               className="px-3 py-1.5 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring capitalize"
             >
               {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
           </div>
@@ -111,14 +125,18 @@ export function FindingsTable({ findings, onSelectFinding }: FindingsTableProps)
             <tbody className="divide-y divide-border text-sm text-foreground">
               {filteredFindings.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-medium">
-                    No findings matches the active filter criteria. Clear filters to see all.
+                  <td
+                    colSpan={5}
+                    className="px-6 py-12 text-center text-muted-foreground font-medium"
+                  >
+                    No findings matches the active filter criteria. Clear
+                    filters to see all.
                   </td>
                 </tr>
               ) : (
                 filteredFindings.map((finding) => (
-                  <tr 
-                    key={finding.id} 
+                  <tr
+                    key={finding.id}
                     className="hover:bg-muted/30 transition-colors"
                   >
                     <td className="px-6 py-4.5 whitespace-nowrap">
@@ -133,7 +151,9 @@ export function FindingsTable({ findings, onSelectFinding }: FindingsTableProps)
                       {finding.category}
                     </td>
                     <td className="px-6 py-4.5">
-                      <p className="font-semibold text-foreground">{finding.title}</p>
+                      <p className="font-semibold text-foreground">
+                        {finding.title}
+                      </p>
                       {finding.description && (
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                           {finding.description}
@@ -144,7 +164,7 @@ export function FindingsTable({ findings, onSelectFinding }: FindingsTableProps)
                       {finding.filePath ? (
                         <span>
                           {finding.filePath}
-                          {finding.lineNumber ? `:${finding.lineNumber}` : ''}
+                          {finding.lineNumber ? `:${finding.lineNumber}` : ""}
                         </span>
                       ) : (
                         <span className="italic">Project-wide</span>

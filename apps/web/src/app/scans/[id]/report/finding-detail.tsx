@@ -1,10 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { SeverityBadge } from '@/components/severity-badge';
-import { CodeViewer } from '@/components/code-viewer';
-import { apiClient } from '@/lib/api-client';
-import { X, Check, AlertCircle, Sparkles, Loader2, CheckSquare } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { SeverityBadge } from "@/components/severity-badge";
+import { CodeViewer } from "@/components/code-viewer";
+import { apiClient } from "@/lib/api-client";
+import {
+  X,
+  Check,
+  AlertCircle,
+  Sparkles,
+  Loader2,
+  CheckSquare,
+} from "lucide-react";
 
 interface Finding {
   id: string;
@@ -29,14 +36,18 @@ interface FindingDetailProps {
   onUpdate: () => void;
 }
 
-export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailProps) {
+export function FindingDetail({
+  findingId,
+  onClose,
+  onUpdate,
+}: FindingDetailProps) {
   const [finding, setFinding] = useState<Finding | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiFixPlan, setAiFixPlan] = useState<string[] | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState(false);
-  
+
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -48,7 +59,7 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
           setFinding(res);
         }
       } catch (err) {
-        console.error('Failed to fetch finding details', err);
+        console.error("Failed to fetch finding details", err);
       } finally {
         if (active) setLoading(false);
       }
@@ -61,14 +72,23 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
 
   const handleMarkFalsePositive = async () => {
     if (!finding) return;
-    setActionLoading('false-positive');
-    setSuccessMsg('');
+    setActionLoading("false-positive");
+    setSuccessMsg("");
     try {
-      const updated = await apiClient.post<any>(`/findings/${finding.id}/false-positive`, {
-        falsePositive: !finding.falsePositive,
-      });
-      setFinding((prev) => prev ? { ...prev, falsePositive: updated.falsePositive } : null);
-      setSuccessMsg(updated.falsePositive ? 'Marked as false positive.' : 'Restored from false positive.');
+      const updated = await apiClient.post<any>(
+        `/findings/${finding.id}/false-positive`,
+        {
+          falsePositive: !finding.falsePositive,
+        },
+      );
+      setFinding((prev) =>
+        prev ? { ...prev, falsePositive: updated.falsePositive } : null,
+      );
+      setSuccessMsg(
+        updated.falsePositive
+          ? "Marked as false positive."
+          : "Restored from false positive.",
+      );
       onUpdate();
     } catch (err: any) {
       console.error(err);
@@ -79,11 +99,11 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
 
   const handleCreateFixTask = async () => {
     if (!finding) return;
-    setActionLoading('create-task');
-    setSuccessMsg('');
+    setActionLoading("create-task");
+    setSuccessMsg("");
     try {
       await apiClient.post(`/findings/${finding.id}/create-task`, {});
-      setSuccessMsg('Fix task created and assigned successfully.');
+      setSuccessMsg("Fix task created and assigned successfully.");
       onUpdate();
     } catch (err: any) {
       console.error(err);
@@ -96,7 +116,9 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
     if (!finding) return;
     setGeneratingPlan(true);
     try {
-      const plan = await apiClient.post<string[]>(`/findings/${finding.id}/generate-fix-plan`);
+      const plan = await apiClient.post<string[]>(
+        `/findings/${finding.id}/generate-fix-plan`,
+      );
       setAiFixPlan(plan);
     } catch (err: any) {
       console.error(err);
@@ -115,17 +137,15 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
 
   if (!finding) {
     return (
-      <div className="p-6 text-center text-gray-500">
-        Finding not found.
-      </div>
+      <div className="p-6 text-center text-gray-500">Finding not found.</div>
     );
   }
 
   const suggestedTestsArray = Array.isArray(finding.suggestedTests)
     ? finding.suggestedTests
-    : typeof finding.suggestedTests === 'string'
-    ? JSON.parse(finding.suggestedTests || '[]')
-    : [];
+    : typeof finding.suggestedTests === "string"
+      ? JSON.parse(finding.suggestedTests || "[]")
+      : [];
 
   return (
     <div className="space-y-6">
@@ -152,7 +172,9 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
             {finding.title}
           </h3>
           <p className="text-xs text-muted-foreground mt-1 font-mono">
-            {finding.filePath ? `${finding.filePath}${finding.lineNumber ? `:${finding.lineNumber}` : ''}` : 'Project-wide'}
+            {finding.filePath
+              ? `${finding.filePath}${finding.lineNumber ? `:${finding.lineNumber}` : ""}`
+              : "Project-wide"}
           </p>
         </div>
         <button
@@ -176,7 +198,7 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
           Why It Matters
         </h4>
         <p className="text-sm text-foreground leading-relaxed bg-muted/20 p-4 border border-border rounded-sm">
-          {finding.description || 'No detailed analysis provided.'}
+          {finding.description || "No detailed analysis provided."}
         </p>
       </div>
 
@@ -187,9 +209,11 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
             Violating Code Snippet
           </h4>
           <div className="border border-border rounded-sm overflow-hidden">
-            <CodeViewer 
-              code={finding.codeSnippet} 
-              language={finding.filePath?.endsWith('.tsx') ? 'typescript' : 'javascript'} 
+            <CodeViewer
+              code={finding.codeSnippet}
+              language={
+                finding.filePath?.endsWith(".tsx") ? "typescript" : "javascript"
+              }
               height="180px"
             />
           </div>
@@ -231,7 +255,9 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
           </h4>
           <ul className="space-y-1.5 pl-5 list-disc text-xs text-muted-foreground">
             {suggestedTestsArray.map((test: string, idx: number) => (
-              <li key={idx} className="leading-relaxed">{test}</li>
+              <li key={idx} className="leading-relaxed">
+                {test}
+              </li>
             ))}
           </ul>
         </div>
@@ -271,7 +297,9 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
             </span>
             <ol className="space-y-2 list-decimal pl-5 text-xs text-muted-foreground">
               {aiFixPlan.map((step, idx) => (
-                <li key={idx} className="leading-relaxed">{step}</li>
+                <li key={idx} className="leading-relaxed">
+                  {step}
+                </li>
               ))}
             </ol>
           </div>
@@ -285,12 +313,12 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
           disabled={actionLoading !== null}
           className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-sm border border-border bg-muted/20 text-foreground hover:bg-foreground hover:text-background transition-colors"
         >
-          {actionLoading === 'false-positive' ? (
+          {actionLoading === "false-positive" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : finding.falsePositive ? (
-            'Restore Finding'
+            "Restore Finding"
           ) : (
-            'Mark False Positive'
+            "Mark False Positive"
           )}
         </button>
 
@@ -299,7 +327,7 @@ export function FindingDetail({ findingId, onClose, onUpdate }: FindingDetailPro
           disabled={actionLoading !== null}
           className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold rounded-sm bg-foreground text-background hover:bg-foreground/90 transition-all"
         >
-          {actionLoading === 'create-task' ? (
+          {actionLoading === "create-task" ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <>

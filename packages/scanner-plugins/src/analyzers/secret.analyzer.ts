@@ -1,27 +1,64 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { Finding } from '@slopshield/shared';
-import { StaticAnalyzer, AnalysisContext, AnalysisResult } from '../interfaces/static-analyzer.interface.js';
+import * as fs from "fs";
+import * as path from "path";
+import { Finding } from "@slopshield/shared";
+import {
+  StaticAnalyzer,
+  AnalysisContext,
+  AnalysisResult,
+} from "../interfaces/static-analyzer.interface.js";
 
 export class SecretAnalyzer implements StaticAnalyzer {
-  public readonly name = 'secret-scanner';
-  public readonly description = 'Detects hardcoded secrets, API keys, tokens, and passwords';
+  public readonly name = "secret-scanner";
+  public readonly description =
+    "Detects hardcoded secrets, API keys, tokens, and passwords";
 
   private readonly patterns: { name: string; regex: RegExp }[] = [
-    { name: 'AWS Access Key', regex: /(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}/ },
-    { name: 'Generic API Key', regex: /(?:api[_-]?key|apikey|api[_-]?secret)\s*[:=]\s*['"]([a-zA-Z0-9_\-]{16,})['"]/i },
-    { name: 'Generic Password', regex: /(?:password|passwd|pwd|secret)\s*[:=]\s*['"]([^'"]{8,})['"]/i },
-    { name: 'Generic Token', regex: /(?:token|bearer|auth)\s*[:=]\s*['"]([a-zA-Z0-9_\-\.]{20,})['"]/i },
-    { name: 'Connection String', regex: /(?:postgres|mysql|mongodb|redis):\/\/([^\s'"]+)/i },
-    { name: 'Private Key', regex: /-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----/ },
-    { name: 'JWT Token', regex: /eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/ },
-    { name: 'GitHub Token', regex: /gh[pousr]_[a-zA-Z0-9]{36,}/ },
-    { name: 'Slack Token', regex: /xox[bpoas]-[a-zA-Z0-9-]+/ },
+    { name: "AWS Access Key", regex: /(?:AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}/ },
+    {
+      name: "Generic API Key",
+      regex:
+        /(?:api[_-]?key|apikey|api[_-]?secret)\s*[:=]\s*['"]([a-zA-Z0-9_\-]{16,})['"]/i,
+    },
+    {
+      name: "Generic Password",
+      regex: /(?:password|passwd|pwd|secret)\s*[:=]\s*['"]([^'"]{8,})['"]/i,
+    },
+    {
+      name: "Generic Token",
+      regex: /(?:token|bearer|auth)\s*[:=]\s*['"]([a-zA-Z0-9_\-\.]{20,})['"]/i,
+    },
+    {
+      name: "Connection String",
+      regex: /(?:postgres|mysql|mongodb|redis):\/\/([^\s'"]+)/i,
+    },
+    {
+      name: "Private Key",
+      regex: /-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----/,
+    },
+    {
+      name: "JWT Token",
+      regex: /eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/,
+    },
+    { name: "GitHub Token", regex: /gh[pousr]_[a-zA-Z0-9]{36,}/ },
+    { name: "Slack Token", regex: /xox[bpoas]-[a-zA-Z0-9-]+/ },
   ];
 
   private readonly allowedExtensions = new Set([
-    '.ts', '.tsx', '.js', '.jsx', '.json', '.env', '.py', '.go',
-    '.yaml', '.yml', '.toml', '.cfg', '.ini', '.conf', '.properties'
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".json",
+    ".env",
+    ".py",
+    ".go",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".conf",
+    ".properties",
   ]);
 
   public async isAvailable(): Promise<boolean> {
@@ -30,7 +67,7 @@ export class SecretAnalyzer implements StaticAnalyzer {
 
   public async analyze(context: AnalysisContext): Promise<AnalysisResult> {
     const startTime = Date.now();
-    const findings: Omit<Finding, 'id' | 'scanId'>[] = [];
+    const findings: Omit<Finding, "id" | "scanId">[] = [];
 
     try {
       for (const relativeFile of context.files) {
@@ -38,7 +75,7 @@ export class SecretAnalyzer implements StaticAnalyzer {
         const filename = path.basename(relativeFile).toLowerCase();
 
         // Skip files that are not textual or not source code/configs
-        if (!this.allowedExtensions.has(ext) && !filename.startsWith('.env')) {
+        if (!this.allowedExtensions.has(ext) && !filename.startsWith(".env")) {
           continue;
         }
 
@@ -52,7 +89,7 @@ export class SecretAnalyzer implements StaticAnalyzer {
           continue;
         }
 
-        const content = fs.readFileSync(absolutePath, 'utf8');
+        const content = fs.readFileSync(absolutePath, "utf8");
         const lines = content.split(/\r?\n/);
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
@@ -72,21 +109,24 @@ export class SecretAnalyzer implements StaticAnalyzer {
               const redactedMatch = this.redactSecret(fullMatch, capturedValue);
 
               findings.push({
-                severity: 'critical',
-                category: 'backend-security',
+                severity: "critical",
+                category: "backend-security",
                 title: `Hardcoded Secret Detected (${pattern.name}): ${redactedMatch}`,
                 file: relativeFile,
                 line: lineIndex + 1,
                 standardReferences: [
-                  'CWE-798 Use of Hard-coded Credentials',
-                  'OWASP A07:2021 Identification and Authentication Failures'
+                  "CWE-798 Use of Hard-coded Credentials",
+                  "OWASP A07:2021 Identification and Authentication Failures",
                 ],
-                whyItMatters: 'Hardcoding secrets or credentials directly in the codebase risks exposing them to unauthorised users, third-party hosting providers, or public repositories. Once leaked, credentials can be used to compromise databases, cloud platforms, and user data.',
+                whyItMatters:
+                  "Hardcoding secrets or credentials directly in the codebase risks exposing them to unauthorised users, third-party hosting providers, or public repositories. Once leaked, credentials can be used to compromise databases, cloud platforms, and user data.",
                 recommendation: `Remove the hardcoded credential from the source code. Move it to an environment variable (e.g. process.env or .env file) and load it dynamically at runtime. Ensure this secret has been revoked and rotated immediately.`,
                 blocking: true,
                 confidence: 0.95,
-                source: 'secret-scanner',
-                codeSnippet: lineContent.replace(fullMatch, redactedMatch).trim()
+                source: "secret-scanner",
+                codeSnippet: lineContent
+                  .replace(fullMatch, redactedMatch)
+                  .trim(),
               });
             }
           }
@@ -97,7 +137,7 @@ export class SecretAnalyzer implements StaticAnalyzer {
         analyzerName: this.name,
         success: true,
         findings,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
       };
     } catch (err: any) {
       return {
@@ -105,14 +145,14 @@ export class SecretAnalyzer implements StaticAnalyzer {
         success: false,
         findings: [],
         error: err.message || String(err),
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
       };
     }
   }
 
   private redactSecret(fullMatch: string, secretVal: string): string {
     if (secretVal.length <= 6) {
-      return fullMatch.replace(secretVal, '******');
+      return fullMatch.replace(secretVal, "******");
     }
     const visibleLength = Math.max(3, Math.floor(secretVal.length / 5));
     const start = secretVal.substring(0, visibleLength);
@@ -122,12 +162,25 @@ export class SecretAnalyzer implements StaticAnalyzer {
   }
 
   private isBoilerplateValue(val: string): boolean {
-    const lower = val.toLowerCase().replace(/['"]/g, '').trim();
+    const lower = val.toLowerCase().replace(/['"]/g, "").trim();
     const boilerplate = new Set([
-      'dummy', 'test', 'temp', 'placeholder', 'your_api_key', 'your-api-key',
-      'mysecret', 'password123', 'admin123', 'secret_key', 'secret-key',
-      'jwt_secret_key', 'redis_password', 'db_password', 'postgresql://username:password@localhost:5432/db',
-      'mongodb://username:password@localhost:27017/db', 'mysql://username:password@localhost:3306/db'
+      "dummy",
+      "test",
+      "temp",
+      "placeholder",
+      "your_api_key",
+      "your-api-key",
+      "mysecret",
+      "password123",
+      "admin123",
+      "secret_key",
+      "secret-key",
+      "jwt_secret_key",
+      "redis_password",
+      "db_password",
+      "postgresql://username:password@localhost:5432/db",
+      "mongodb://username:password@localhost:27017/db",
+      "mysql://username:password@localhost:3306/db",
     ]);
     return boilerplate.has(lower) || lower.length < 6;
   }

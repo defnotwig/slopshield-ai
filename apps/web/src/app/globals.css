@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* ===================================================================
    SlopShield AI — Tailwind v4 Theme & Global Styles
@@ -6,9 +6,9 @@
 
 @theme {
   /* ---------- Typography ---------- */
-  --font-sans: 'Albert Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Alumni Sans', sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: "Albert Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Alumni Sans", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* ---------- Light-Mode Colors (default) ---------- */
   --color-background: #f7f4ef;
@@ -126,7 +126,9 @@ body {
   color: var(--color-foreground);
   background-color: var(--color-background);
   font-family: var(--font-sans);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* ===================================================================
@@ -159,7 +161,9 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(56, 68, 90, 0.35);
   border-radius: var(--radius-lg);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .glass-card:hover {
@@ -228,7 +232,8 @@ body {
 }
 
 @keyframes score-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -237,7 +242,8 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -246,7 +252,8 @@ body {
 }
 
 @keyframes glow-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow:
       0 0 5px rgba(0, 212, 255, 0.3),
       0 0 20px rgba(0, 212, 255, 0.15);
@@ -348,13 +355,27 @@ body {
 }
 
 /* Staggered children */
-.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2) { animation-delay: 80ms; }
-.stagger-children > *:nth-child(3) { animation-delay: 160ms; }
-.stagger-children > *:nth-child(4) { animation-delay: 240ms; }
-.stagger-children > *:nth-child(5) { animation-delay: 320ms; }
-.stagger-children > *:nth-child(6) { animation-delay: 400ms; }
-.stagger-children > *:nth-child(7) { animation-delay: 480ms; }
+.stagger-children > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-children > *:nth-child(2) {
+  animation-delay: 80ms;
+}
+.stagger-children > *:nth-child(3) {
+  animation-delay: 160ms;
+}
+.stagger-children > *:nth-child(4) {
+  animation-delay: 240ms;
+}
+.stagger-children > *:nth-child(5) {
+  animation-delay: 320ms;
+}
+.stagger-children > *:nth-child(6) {
+  animation-delay: 400ms;
+}
+.stagger-children > *:nth-child(7) {
+  animation-delay: 480ms;
+}
 
 /* ===================================================================
    Gradient Text Utility

@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { ScanStatusResultEnum } from './scan.schema.js';
+import { z } from "zod";
+import { ScanStatusResultEnum } from "./scan.schema.js";
 
 // ---------------------------------------------------------------------------
 // Lark Card Action
@@ -11,11 +11,11 @@ import { ScanStatusResultEnum } from './scan.schema.js';
  * operation and updates the card in-place.
  */
 export const LarkCardActionEnum = z.enum([
-  'view-report',
-  'create-tasks',
-  'generate-fix-plan',
-  'request-tl-review',
-  'approve',
+  "view-report",
+  "create-tasks",
+  "generate-fix-plan",
+  "request-tl-review",
+  "approve",
 ]);
 
 /** TypeScript union for Lark card actions. */

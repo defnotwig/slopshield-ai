@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import * as fs from 'fs';
-import * as path from 'path';
-import AdmZip from 'adm-zip';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateScanInput } from '@slopshield/shared';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue } from "bullmq";
+import * as fs from "fs";
+import * as path from "path";
+import AdmZip from "adm-zip";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { CreateScanInput } from "@slopshield/shared";
 
 @Injectable()
 export class ScanService {
@@ -14,23 +19,33 @@ export class ScanService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue('scan-pipeline') private readonly scanQueue: Queue
+    @InjectQueue("scan-pipeline") private readonly scanQueue: Queue,
   ) {
-    this.tempBaseDir = path.join(process.cwd(), 'temp-scans');
+    this.tempBaseDir = path.join(process.cwd(), "temp-scans");
     if (!fs.existsSync(this.tempBaseDir)) {
       fs.mkdirSync(this.tempBaseDir, { recursive: true });
     }
   }
 
-  public async createScan(input: CreateScanInput, userId?: string, file?: Express.Multer.File): Promise<any> {
-    if (input.sourceType === 'paste' && !input.sourceContent) {
-      throw new BadRequestException('Pasted code content is required for sourceType: "paste"');
+  public async createScan(
+    input: CreateScanInput,
+    userId?: string,
+    file?: Express.Multer.File,
+  ): Promise<any> {
+    if (input.sourceType === "paste" && !input.sourceContent) {
+      throw new BadRequestException(
+        'Pasted code content is required for sourceType: "paste"',
+      );
     }
-    if (input.sourceType === 'upload' && !file) {
-      throw new BadRequestException('ZIP file upload is required for sourceType: "upload"');
+    if (input.sourceType === "upload" && !file) {
+      throw new BadRequestException(
+        'ZIP file upload is required for sourceType: "upload"',
+      );
     }
-    if (input.sourceType === 'demo-sample' && !input.demoSampleId) {
-      throw new BadRequestException('Demo sample ID is required for sourceType: "demo-sample"');
+    if (input.sourceType === "demo-sample" && !input.demoSampleId) {
+      throw new BadRequestException(
+        'Demo sample ID is required for sourceType: "demo-sample"',
+      );
     }
 
     const scanJob = await this.prisma.scanJob.create({
@@ -38,8 +53,8 @@ export class ScanService {
         projectId: input.projectId || null,
         sourceType: input.sourceType,
         sourceRef: input.sourceRef || (file ? file.originalname : null),
-        status: 'queued',
-        scanMode: input.scanMode || 'full',
+        status: "queued",
+        scanMode: input.scanMode || "full",
         startedBy: userId || null,
       },
     });
@@ -49,25 +64,27 @@ export class ScanService {
 
     // Prepare files in scan directory
     try {
-      if (input.sourceType === 'paste') {
-        const ext = input.scanMode === 'frontend-only' ? '.tsx' : '.ts';
+      if (input.sourceType === "paste") {
+        const ext = input.scanMode === "frontend-only" ? ".tsx" : ".ts";
         const targetFile = path.join(scanDir, `pasted_code${ext}`);
-        fs.writeFileSync(targetFile, input.sourceContent || '', 'utf8');
-      } else if (input.sourceType === 'upload' && file) {
+        fs.writeFileSync(targetFile, input.sourceContent || "", "utf8");
+      } else if (input.sourceType === "upload" && file) {
         // Safe extraction with adm-zip
         const zip = new AdmZip(file.buffer);
         zip.extractAllTo(scanDir, true);
-      } else if (input.sourceType === 'demo-sample') {
-        const demoId = input.demoSampleId || '';
-        const demoDir = path.join(process.cwd(), 'demo-samples', demoId);
+      } else if (input.sourceType === "demo-sample") {
+        const demoId = input.demoSampleId || "";
+        const demoDir = path.join(process.cwd(), "demo-samples", demoId);
         if (!fs.existsSync(demoDir)) {
-          throw new BadRequestException(`Demo sample folder ${demoId} not found`);
+          throw new BadRequestException(
+            `Demo sample folder ${demoId} not found`,
+          );
         }
         this.copyFolderSync(demoDir, scanDir);
       }
 
       // Add to BullMQ queue
-      await this.scanQueue.add('process-scan', {
+      await this.scanQueue.add("process-scan", {
         scanId: scanJob.id,
         scanDir,
       });
@@ -75,10 +92,12 @@ export class ScanService {
       this.logger.log(`Enqueued scan job: ${scanJob.id}`);
       return scanJob;
     } catch (err: any) {
-      this.logger.error(`Failed to ingest files for scan ${scanJob.id}: ${err.message}`);
+      this.logger.error(
+        `Failed to ingest files for scan ${scanJob.id}: ${err.message}`,
+      );
       await this.prisma.scanJob.update({
         where: { id: scanJob.id },
-        data: { status: 'failed', statusResult: 'blocked' },
+        data: { status: "failed", statusResult: "blocked" },
       });
       // Clean up directory if created
       if (fs.existsSync(scanDir)) {
@@ -105,7 +124,12 @@ export class ScanService {
     return scan;
   }
 
-  public async listScans(page = 1, limit = 10, projectId?: string, status?: string): Promise<any> {
+  public async listScans(
+    page = 1,
+    limit = 10,
+    projectId?: string,
+    status?: string,
+  ): Promise<any> {
     const filter: any = {};
     if (projectId) filter.projectId = projectId;
     if (status) filter.status = status;
@@ -114,7 +138,7 @@ export class ScanService {
     const [items, total] = await Promise.all([
       this.prisma.scanJob.findMany({
         where: filter,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
         include: { project: true },
@@ -131,7 +155,12 @@ export class ScanService {
     };
   }
 
-  public async getFindings(scanId: string, category?: string, severity?: string, falsePositive?: boolean): Promise<any[]> {
+  public async getFindings(
+    scanId: string,
+    category?: string,
+    severity?: string,
+    falsePositive?: boolean,
+  ): Promise<any[]> {
     const filter: any = { scanJobId: scanId };
     if (category) filter.category = category;
     if (severity) filter.severity = severity;
@@ -139,19 +168,25 @@ export class ScanService {
 
     return this.prisma.finding.findMany({
       where: filter,
-      orderBy: { severity: 'asc' },
+      orderBy: { severity: "asc" },
     });
   }
 
   public async cancelScan(id: string): Promise<any> {
     const scan = await this.getScan(id);
-    if (scan.status === 'completed' || scan.status === 'failed' || scan.status === 'cancelled') {
-      throw new BadRequestException(`Cannot cancel a scan job that is already ${scan.status}`);
+    if (
+      scan.status === "completed" ||
+      scan.status === "failed" ||
+      scan.status === "cancelled"
+    ) {
+      throw new BadRequestException(
+        `Cannot cancel a scan job that is already ${scan.status}`,
+      );
     }
 
     return this.prisma.scanJob.update({
       where: { id },
-      data: { status: 'cancelled', completedAt: new Date() },
+      data: { status: "cancelled", completedAt: new Date() },
     });
   }
 

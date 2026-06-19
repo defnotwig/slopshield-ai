@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { FindingSeverityEnum } from './finding.schema.js';
+import { z } from "zod";
+import { FindingSeverityEnum } from "./finding.schema.js";
 
 // ---------------------------------------------------------------------------
 // AI Finding Schema

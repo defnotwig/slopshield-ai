@@ -1,5 +1,5 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Finding } from '@slopshield/shared';
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Finding } from "@slopshield/shared";
 import {
   StaticAnalyzer,
   ESLintAnalyzer,
@@ -8,7 +8,7 @@ import {
   SemgrepAnalyzer,
   AnalysisContext,
   AnalysisResult,
-} from '@slopshield/scanner-plugins';
+} from "@slopshield/scanner-plugins";
 
 @Injectable()
 export class ScannerOrchestrator implements OnModuleInit {
@@ -27,7 +27,9 @@ export class ScannerOrchestrator implements OnModuleInit {
     // Log available analyzers
     for (const analyzer of this.analyzers) {
       const available = await analyzer.isAvailable();
-      this.logger.log(`Scanner registered: [${analyzer.name}] - Available: ${available}`);
+      this.logger.log(
+        `Scanner registered: [${analyzer.name}] - Available: ${available}`,
+      );
     }
   }
 
@@ -39,7 +41,9 @@ export class ScannerOrchestrator implements OnModuleInit {
    * @param context Ingestion context containing scan directory and target files
    * @returns Array of combined Omit<Finding, 'id' | 'scanId'>[]
    */
-  public async runAll(context: AnalysisContext): Promise<Omit<Finding, 'id' | 'scanId'>[]> {
+  public async runAll(
+    context: AnalysisContext,
+  ): Promise<Omit<Finding, "id" | "scanId">[]> {
     const activeAnalyzers: StaticAnalyzer[] = [];
 
     // Filter to only run available analyzers
@@ -47,16 +51,20 @@ export class ScannerOrchestrator implements OnModuleInit {
       if (await analyzer.isAvailable()) {
         activeAnalyzers.push(analyzer);
       } else {
-        this.logger.warn(`Scanner [${analyzer.name}] is unavailable; skipping.`);
+        this.logger.warn(
+          `Scanner [${analyzer.name}] is unavailable; skipping.`,
+        );
       }
     }
 
     if (activeAnalyzers.length === 0) {
-      this.logger.warn('No static analyzers are available to run.');
+      this.logger.warn("No static analyzers are available to run.");
       return [];
     }
 
-    this.logger.log(`Running ${activeAnalyzers.length} static analyzers in parallel on ${context.files.length} files...`);
+    this.logger.log(
+      `Running ${activeAnalyzers.length} static analyzers in parallel on ${context.files.length} files...`,
+    );
 
     const promises = activeAnalyzers.map(async (analyzer) => {
       try {
@@ -74,22 +82,28 @@ export class ScannerOrchestrator implements OnModuleInit {
     });
 
     const results = await Promise.allSettled(promises);
-    const combinedFindings: Omit<Finding, 'id' | 'scanId'>[] = [];
+    const combinedFindings: Omit<Finding, "id" | "scanId">[] = [];
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const analyzerName = activeAnalyzers[i].name;
 
-      if (result.status === 'fulfilled') {
+      if (result.status === "fulfilled") {
         const analysisResult = result.value;
         if (analysisResult.success) {
-          this.logger.log(`Analyzer [${analyzerName}] completed: ${analysisResult.findings.length} findings in ${analysisResult.durationMs}ms`);
+          this.logger.log(
+            `Analyzer [${analyzerName}] completed: ${analysisResult.findings.length} findings in ${analysisResult.durationMs}ms`,
+          );
           combinedFindings.push(...analysisResult.findings);
         } else {
-          this.logger.error(`Analyzer [${analyzerName}] failed: ${analysisResult.error || 'Unknown error'}`);
+          this.logger.error(
+            `Analyzer [${analyzerName}] failed: ${analysisResult.error || "Unknown error"}`,
+          );
         }
       } else {
-        this.logger.error(`Analyzer [${analyzerName}] promise rejected: ${String(result.reason)}`);
+        this.logger.error(
+          `Analyzer [${analyzerName}] promise rejected: ${String(result.reason)}`,
+        );
       }
     }
 

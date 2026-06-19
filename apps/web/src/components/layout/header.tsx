@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
-import { Bell, Search } from 'lucide-react';
+import React from "react";
+import { usePathname } from "next/navigation";
+import { Bell, Search } from "lucide-react";
 
 export function Header() {
   const pathname = usePathname();
 
   const getPageTitle = () => {
-    if (pathname === '/') return 'Home';
-    if (pathname.startsWith('/dashboard')) return 'Analytics Dashboard';
-    if (pathname.startsWith('/scans/new')) return 'Run New Code Scan';
-    if (pathname.includes('/report')) return 'Code Quality Report';
-    if (pathname.includes('/progress')) return 'Scan In Progress';
-    if (pathname.startsWith('/scans')) return 'Scan History';
-    if (pathname.startsWith('/projects')) return 'Projects';
-    if (pathname.startsWith('/rules')) return 'Rules Library';
-    return 'SlopShield AI';
+    if (pathname === "/") return "Home";
+    if (pathname.startsWith("/dashboard")) return "Analytics Dashboard";
+    if (pathname.startsWith("/scans/new")) return "Run New Code Scan";
+    if (pathname.includes("/report")) return "Code Quality Report";
+    if (pathname.includes("/progress")) return "Scan In Progress";
+    if (pathname.startsWith("/scans")) return "Scan History";
+    if (pathname.startsWith("/projects")) return "Projects";
+    if (pathname.startsWith("/rules")) return "Rules Library";
+    return "SlopShield AI";
   };
 
   return (

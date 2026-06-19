@@ -1,14 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { AIReviewerService } from '../ai-reviewer/ai-reviewer.service.js';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import * as fs from "fs";
+import * as path from "path";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { AIReviewerService } from "../ai-reviewer/ai-reviewer.service.js";
 
 @Injectable()
 export class FindingsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly aiReviewer: AIReviewerService
+    private readonly aiReviewer: AIReviewerService,
   ) {}
 
   public async findOne(id: string): Promise<any> {
@@ -47,8 +47,8 @@ export class FindingsService {
         findingId: id,
         assignedTo: assignTo || null,
         title: `Fix finding: ${finding.title}`,
-        description: `Please resolve the following issue: ${finding.description || ''}\n\nFile: ${finding.filePath}\nLine: ${finding.lineNumber}\nRecommendation: ${finding.recommendation || ''}`,
-        status: 'open',
+        description: `Please resolve the following issue: ${finding.description || ""}\n\nFile: ${finding.filePath}\nLine: ${finding.lineNumber}\nRecommendation: ${finding.recommendation || ""}`,
+        status: "open",
       },
     });
   }
@@ -57,13 +57,17 @@ export class FindingsService {
     const finding = await this.findOne(id);
 
     // Retrieve file content if possible
-    let codeContext = '';
+    let codeContext = "";
     if (finding.filePath) {
       try {
-        const tempBase = path.join(process.cwd(), 'temp-scans', finding.scanJobId);
+        const tempBase = path.join(
+          process.cwd(),
+          "temp-scans",
+          finding.scanJobId,
+        );
         const filePath = path.join(tempBase, finding.filePath);
         if (fs.existsSync(filePath)) {
-          codeContext = fs.readFileSync(filePath, 'utf8');
+          codeContext = fs.readFileSync(filePath, "utf8");
         }
       } catch {
         // Fallback to codeSnippet

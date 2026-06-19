@@ -1,11 +1,20 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { useScans } from '@/hooks/use-scans';
-import { useMe } from '@/hooks/use-auth';
-import { StatusBadge } from '@/components/status-badge';
-import { ShieldAlert, PlusCircle, ArrowRight, ShieldCheck, Zap, Server, BarChart3, Database } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import { useScans } from "@/hooks/use-scans";
+import { useMe } from "@/hooks/use-auth";
+import { StatusBadge } from "@/components/status-badge";
+import {
+  ShieldAlert,
+  PlusCircle,
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+  Server,
+  BarChart3,
+  Database,
+} from "lucide-react";
 
 export default function HomePage() {
   const { data: scansData, isLoading } = useScans(1, 5);
@@ -31,7 +40,9 @@ export default function HomePage() {
             </span>
           </h2>
           <p className="text-gray-500 dark:text-gray-400 max-w-xl text-sm md:text-base leading-relaxed">
-            SlopShield AI automatically reviews pasted code, files, or Git pull requests for hardcoded secrets, accessibility failures, type errors, architectural anti-patterns, and AI-generated hallucinations.
+            SlopShield AI automatically reviews pasted code, files, or Git pull
+            requests for hardcoded secrets, accessibility failures, type errors,
+            architectural anti-patterns, and AI-generated hallucinations.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center md:justify-start">
@@ -74,9 +85,12 @@ export default function HomePage() {
           <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-500 w-fit mb-4">
             <Server className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold mb-2">Static Analysis Orchestration</h3>
+          <h3 className="text-base font-bold mb-2">
+            Static Analysis Orchestration
+          </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-            Checks TypeScript compiler diagnostics, ESLint configuration rules, and scans regex patterns for hardcoded credentials.
+            Checks TypeScript compiler diagnostics, ESLint configuration rules,
+            and scans regex patterns for hardcoded credentials.
           </p>
         </div>
 
@@ -86,7 +100,8 @@ export default function HomePage() {
           </div>
           <h3 className="text-base font-bold mb-2">Gemini AI Code Reviewer</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-            Applies LLM analysis to identify architectural smells, test coverage gaps, accessibility blocks, and logic redundancies.
+            Applies LLM analysis to identify architectural smells, test coverage
+            gaps, accessibility blocks, and logic redundancies.
           </p>
         </div>
 
@@ -96,7 +111,8 @@ export default function HomePage() {
           </div>
           <h3 className="text-base font-bold mb-2">Standards & Mappings</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-            Maps identified codebase smells directly to industry compliance frameworks including OWASP Top 10, CWE Top 25, and WCAG 2.2.
+            Maps identified codebase smells directly to industry compliance
+            frameworks including OWASP Top 10, CWE Top 25, and WCAG 2.2.
           </p>
         </div>
       </section>
@@ -107,7 +123,10 @@ export default function HomePage() {
           <h3 className="text-lg font-bold text-gray-800 dark:text-gray-150">
             Recent Scans
           </h3>
-          <Link href="/scans" className="text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1">
+          <Link
+            href="/scans"
+            className="text-xs font-bold text-cyan-500 hover:text-cyan-400 flex items-center gap-1"
+          >
             View All Scans
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
@@ -120,7 +139,8 @@ export default function HomePage() {
             </div>
           ) : recentScans.length === 0 ? (
             <div className="p-12 text-center text-sm text-gray-500 dark:text-gray-400">
-              No scans executed yet. Click &quot;Start New Scan&quot; above to run your first check!
+              No scans executed yet. Click &quot;Start New Scan&quot; above to
+              run your first check!
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -137,7 +157,10 @@ export default function HomePage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-850 text-sm">
                   {recentScans.map((scan: any) => (
-                    <tr key={scan.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors">
+                    <tr
+                      key={scan.id}
+                      className="hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors"
+                    >
                       <td className="px-6 py-4 font-mono text-xs font-semibold text-gray-900 dark:text-gray-100 truncate max-w-xs">
                         {scan.id}
                       </td>
@@ -145,20 +168,29 @@ export default function HomePage() {
                         {scan.sourceType}
                       </td>
                       <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
-                        {scan.overallScore !== null ? `${scan.overallScore}/100` : 'N/A'}
+                        {scan.overallScore !== null
+                          ? `${scan.overallScore}/100`
+                          : "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={scan.statusResult || scan.status} />
+                        <StatusBadge
+                          status={scan.statusResult || scan.status}
+                        />
                       </td>
                       <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {new Date(scan.createdAt).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
                         <Link
-                          href={scan.status === 'completed' ? `/scans/${scan.id}/report` : `/scans/${scan.id}/progress`}
+                          href={
+                            scan.status === "completed"
+                              ? `/scans/${scan.id}/report`
+                              : `/scans/${scan.id}/progress`
+                          }
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 hover:bg-cyan-500/10 hover:text-cyan-500 hover:border-cyan-500/20 transition-colors"
                         >
-                          View {scan.status === 'completed' ? 'Report' : 'Progress'}
+                          View{" "}
+                          {scan.status === "completed" ? "Report" : "Progress"}
                         </Link>
                       </td>
                     </tr>

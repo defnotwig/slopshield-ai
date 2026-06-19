@@ -6,8 +6,13 @@
 // disconnects gracefully on shutdown.
 // =============================================================================
 
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
 
 @Injectable()
 export class PrismaService
@@ -19,10 +24,10 @@ export class PrismaService
   constructor() {
     super({
       log: [
-        { emit: 'event', level: 'query' },
-        { emit: 'stdout', level: 'info' },
-        { emit: 'stdout', level: 'warn' },
-        { emit: 'stdout', level: 'error' },
+        { emit: "event", level: "query" },
+        { emit: "stdout", level: "info" },
+        { emit: "stdout", level: "warn" },
+        { emit: "stdout", level: "error" },
       ],
     });
   }
@@ -32,9 +37,9 @@ export class PrismaService
    * Opens the connection pool to PostgreSQL.
    */
   async onModuleInit(): Promise<void> {
-    this.logger.log('Connecting to PostgreSQL via Prisma…');
+    this.logger.log("Connecting to PostgreSQL via Prisma…");
     await this.$connect();
-    this.logger.log('PostgreSQL connection established.');
+    this.logger.log("PostgreSQL connection established.");
   }
 
   /**
@@ -42,8 +47,8 @@ export class PrismaService
    * Drains the connection pool cleanly.
    */
   async onModuleDestroy(): Promise<void> {
-    this.logger.log('Disconnecting from PostgreSQL…');
+    this.logger.log("Disconnecting from PostgreSQL…");
     await this.$disconnect();
-    this.logger.log('PostgreSQL connection closed.');
+    this.logger.log("PostgreSQL connection closed.");
   }
 }

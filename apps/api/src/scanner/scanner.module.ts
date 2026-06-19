@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { ScannerOrchestrator } from './scanner.orchestrator.js';
+import { Module } from "@nestjs/common";
+import { ScannerOrchestrator } from "./scanner.orchestrator.js";
 
 @Module({
   providers: [ScannerOrchestrator],

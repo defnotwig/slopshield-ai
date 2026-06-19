@@ -1,9 +1,16 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Request, Response } from 'express';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from "@nestjs/common";
+import { Request, Response } from "express";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger('HttpExceptionFilter');
+  private readonly logger = new Logger("HttpExceptionFilter");
 
   public catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -15,13 +22,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    let message = 'Internal server error';
-    let error = 'InternalServerError';
+    let message = "Internal server error";
+    let error = "InternalServerError";
     let details: any = undefined;
 
     if (exception instanceof HttpException) {
       const resContent: any = exception.getResponse();
-      if (typeof resContent === 'object' && resContent !== null) {
+      if (typeof resContent === "object" && resContent !== null) {
         message = resContent.message || exception.message;
         error = resContent.error || exception.name;
         details = resContent.details || undefined;
@@ -33,7 +40,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.message;
       error = exception.name;
       // Log stack trace for unhandled errors
-      this.logger.error(`Unhandled exception: ${exception.message}`, exception.stack);
+      this.logger.error(
+        `Unhandled exception: ${exception.message}`,
+        exception.stack,
+      );
     } else {
       this.logger.error(`Unknown exception type: ${String(exception)}`);
     }
@@ -45,7 +55,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       details,
       timestamp: new Date().toISOString(),
       path: request.url,
-      requestId: request.requestId || 'unknown',
+      requestId: request.requestId || "unknown",
     };
 
     response.status(status).json(responseBody);

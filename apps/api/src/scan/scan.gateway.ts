@@ -1,12 +1,18 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
+import { Logger } from "@nestjs/common";
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: "*",
   },
-  namespace: 'scans',
+  namespace: "scans",
 })
 export class ScanGateway {
   private readonly logger = new Logger(ScanGateway.name);
@@ -22,14 +28,16 @@ export class ScanGateway {
     this.logger.log(`Socket client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('subscribe-scan')
+  @SubscribeMessage("subscribe-scan")
   public handleSubscribeScan(
-    @MessageBody('scanId') scanId: string,
-    @ConnectedSocket() client: Socket
+    @MessageBody("scanId") scanId: string,
+    @ConnectedSocket() client: Socket,
   ): void {
     const roomName = `scan-${scanId}`;
     client.join(roomName);
-    this.logger.log(`Client [${client.id}] subscribed to progress events in room: ${roomName}`);
+    this.logger.log(
+      `Client [${client.id}] subscribed to progress events in room: ${roomName}`,
+    );
   }
 
   /**
@@ -38,9 +46,14 @@ export class ScanGateway {
    * @param scanId The scan job identifier
    * @param progress Progress payload { stage: string, percentage: number, message?: string }
    */
-  public broadcastProgress(scanId: string, progress: { stage: string; percentage: number; message?: string }): void {
+  public broadcastProgress(
+    scanId: string,
+    progress: { stage: string; percentage: number; message?: string },
+  ): void {
     const roomName = `scan-${scanId}`;
-    this.server.to(roomName).emit('scan-progress', progress);
-    this.logger.debug(`Broadcasted progress to [${roomName}]: ${progress.stage} (${progress.percentage}%)`);
+    this.server.to(roomName).emit("scan-progress", progress);
+    this.logger.debug(
+      `Broadcasted progress to [${roomName}]: ${progress.stage} (${progress.percentage}%)`,
+    );
   }
 }

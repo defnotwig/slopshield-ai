@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
 export class ReportService {
@@ -12,7 +12,7 @@ export class ReportService {
         project: true,
         scanFiles: true,
         findings: {
-          orderBy: [{ falsePositive: 'asc' }, { severity: 'asc' }],
+          orderBy: [{ falsePositive: "asc" }, { severity: "asc" }],
         },
       },
     });
@@ -64,7 +64,7 @@ export class ReportService {
         line: f.lineNumber,
         standardReferences: f.standardReference ? [f.standardReference] : [],
         recommendation: f.recommendation,
-        suggestedTests: f.suggestedTests as string[] || [],
+        suggestedTests: (f.suggestedTests as string[]) || [],
         blocking: f.blocking,
         confidence: f.confidence || 0.5,
         source: f.source,
@@ -86,10 +86,10 @@ export class ReportService {
 
     return {
       scanId: report.id,
-      repository: report.sourceRef || report.projectName || 'Pasted Code',
-      author: 'Developer',
+      repository: report.sourceRef || report.projectName || "Pasted Code",
+      author: "Developer",
       score: report.overallScore || 0,
-      status: report.statusResult || 'blocked',
+      status: report.statusResult || "blocked",
       topFindings,
       reportUrl: `http://localhost:3000/scans/${report.id}/report`,
     };
