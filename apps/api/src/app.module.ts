@@ -27,6 +27,7 @@ import { LarkModule } from "./lark/lark.module";
 import { AIReviewerModule } from "./ai-reviewer/ai-reviewer.module";
 import { ScoringModule } from "./scoring/scoring.module";
 import { ReportModule } from "./report/report.module";
+import { NotificationModule } from "./notification/notification.module";
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { ReportModule } from "./report/report.module";
     AIReviewerModule,
     ScoringModule,
     ReportModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

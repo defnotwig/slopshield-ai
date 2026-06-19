@@ -27,8 +27,10 @@ model User {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  scanJobs ScanJob[]
-  fixTasks FixTask[]
+  scanJobs            ScanJob[]
+  fixTasks            FixTask[]
+  memberships         ProjectMember[]
+  notificationSetting NotificationSetting?
 
   @@map("users")
 }
@@ -48,6 +50,7 @@ model Project {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   scanJobs ScanJob[]
+  members  ProjectMember[]
 
   @@map("projects")
 }
@@ -192,4 +195,39 @@ model FixTask {
   assignee User?   @relation(fields: [assignedTo], references: [id])
 
   @@map("fix_tasks")
+}
+
+// ---------------------------------------------------------------------------
+// ProjectMember — Represents membership relation between Project and User
+// ---------------------------------------------------------------------------
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  role      String   @default("member")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// ---------------------------------------------------------------------------
+// NotificationSetting — Notification alerts preferences for users
+// ---------------------------------------------------------------------------
+model NotificationSetting {
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  emailAlerts Boolean  @default(true) @map("email_alerts")
+  slackAlerts Boolean  @default(false) @map("slack_alerts")
+  larkAlerts  Boolean  @default(true) @map("lark_alerts")
+  minSeverity String   @default("high") @map("min_severity")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
 }

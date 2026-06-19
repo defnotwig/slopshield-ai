@@ -8,6 +8,11 @@ import {
   useDeleteProject,
 } from "@/hooks/use-projects";
 import {
+  useProjectMembers,
+  useAddProjectMember,
+  useRemoveProjectMember,
+} from "@/hooks/use-notifications";
+import {
   ArrowLeft,
   Save,
   Trash2,
@@ -15,6 +20,9 @@ import {
   Loader2,
   AlertCircle,
   Check,
+  Users,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 
 export default function ProjectSettingsPage() {
@@ -25,6 +33,18 @@ export default function ProjectSettingsPage() {
   const { data: project, isLoading, isError, refetch } = useProject(projectId);
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
+
+  const {
+    data: members,
+    isLoading: membersLoading,
+    refetch: refetchMembers,
+  } = useProjectMembers(projectId);
+  const addMemberMutation = useAddProjectMember();
+  const removeMemberMutation = useRemoveProjectMember();
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
+  const [inviteMsg, setInviteMsg] = useState({ text: "", type: "" });
 
   const [name, setName] = useState("");
   const [repositoryUrl, setRepositoryUrl] = useState("");
@@ -45,6 +65,47 @@ export default function ProjectSettingsPage() {
       setTeamLeadLarkId(project.teamLeadLarkId || "");
     }
   }, [project]);
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviteMsg({ text: "", type: "" });
+    if (!inviteEmail) return;
+
+    try {
+      await addMemberMutation.mutateAsync({
+        projectId,
+        email: inviteEmail,
+        role: inviteRole,
+      });
+      setInviteEmail("");
+      setInviteMsg({
+        text: "Workspace collaborator added successfully.",
+        type: "success",
+      });
+      refetchMembers();
+    } catch (err: any) {
+      setInviteMsg({
+        text: err.message || "Failed to add member.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to remove this member from the project workspace?",
+      )
+    ) {
+      return;
+    }
+    try {
+      await removeMemberMutation.mutateAsync({ projectId, memberId });
+      refetchMembers();
+    } catch (err: any) {
+      alert(err.message || "Failed to remove member.");
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,6 +344,152 @@ export default function ProjectSettingsPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Workspace Sharing & Team Collaborators */}
+      <div className="glass-card bg-white dark:bg-gray-900/35 border border-gray-200 dark:border-gray-800 p-8 rounded-lg space-y-6">
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 border-b border-gray-150 dark:border-gray-800 pb-2.5 flex items-center gap-2">
+            <Users className="w-4 h-4 text-cyan-500" />
+            Workspace Sharing & Team Collaborators
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Authorize other developers and engineers to access quality metrics,
+            findings logs, and receive alerts for this project workspace.
+          </p>
+        </div>
+
+        {inviteMsg.text && (
+          <div
+            className={`p-4 rounded-lg text-xs font-bold flex gap-2 items-center ${
+              inviteMsg.type === "success"
+                ? "bg-green-500/10 border border-green-500/20 text-green-500"
+                : "bg-red-500/10 border border-red-500/20 text-red-500"
+            }`}
+          >
+            {inviteMsg.type === "success" ? (
+              <Check className="w-4.5 h-4.5" />
+            ) : (
+              <AlertCircle className="w-4.5 h-4.5" />
+            )}
+            {inviteMsg.text}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleAddMember}
+          className="flex gap-4 items-end bg-gray-55 dark:bg-gray-950/40 p-4 rounded-lg border border-gray-200 dark:border-gray-800"
+        >
+          <div className="flex-1 space-y-1">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+              Collaborator Email Address
+            </label>
+            <input
+              type="email"
+              placeholder="engineer@company.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-905 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              required
+            />
+          </div>
+
+          <div className="w-36 space-y-1">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+              Workspace Role
+            </label>
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-905 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            >
+              <option value="member">Member</option>
+              <option value="lead">Lead</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={addMemberMutation.isPending}
+            className="px-4 py-2 text-xs font-bold rounded-lg bg-cyan-500 text-gray-950 hover:bg-cyan-400 disabled:opacity-50 flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/10 h-8"
+          >
+            {addMemberMutation.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <UserPlus className="w-3.5 h-3.5" />
+            )}
+            Add Collaborator
+          </button>
+        </form>
+
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            Active Collaborators ({members?.length || 0})
+          </h4>
+
+          {membersLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
+            </div>
+          ) : !members || members.length === 0 ? (
+            <p className="text-xs italic text-gray-500 py-4 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-lg">
+              No additional workspace collaborators configured. Add members
+              above to share dashboard access.
+            </p>
+          ) : (
+            <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-55 dark:bg-gray-950/70 border-b border-gray-200 dark:border-gray-800 text-[10px] uppercase font-bold text-gray-400">
+                    <th className="px-4 py-2.5">Name</th>
+                    <th className="px-4 py-2.5">Email</th>
+                    <th className="px-4 py-2.5">Role</th>
+                    <th className="px-4 py-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-xs">
+                  {members.map((member) => (
+                    <tr
+                      key={member.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-950/20 text-gray-700 dark:text-gray-300"
+                    >
+                      <td className="px-4 py-3 font-semibold">
+                        {member.user.name}
+                      </td>
+                      <td className="px-4 py-3 font-mono">
+                        {member.user.email}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            member.role === "admin"
+                              ? "bg-red-500/10 border border-red-500/20 text-red-500"
+                              : member.role === "lead"
+                                ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-500"
+                                : "bg-cyan-500/10 border border-cyan-500/20 text-cyan-500"
+                          }`}
+                        >
+                          {member.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleRemoveMember(member.id)}
+                          disabled={removeMemberMutation.isPending}
+                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-500/5 rounded transition-all"
+                          title="Remove Collaborator"
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

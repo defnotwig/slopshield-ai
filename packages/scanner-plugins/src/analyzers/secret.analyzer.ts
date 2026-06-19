@@ -40,7 +40,32 @@ export class SecretAnalyzer implements StaticAnalyzer {
       regex: /eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/,
     },
     { name: "GitHub Token", regex: /gh[pousr]_[a-zA-Z0-9]{36,}/ },
+    { name: "GitHub Fine-Grained Token", regex: /github_pat_[a-zA-Z0-9]{82}/ },
     { name: "Slack Token", regex: /xox[bpoas]-[a-zA-Z0-9-]+/ },
+    {
+      name: "Stripe API Key",
+      regex:
+        /rk_(?:live|test)_[0-9a-zA-Z]{24}|sk_(?:live|test)_[0-9a-zA-Z]{24}/,
+    },
+    {
+      name: "Slack Webhook URL",
+      regex:
+        /https:\/\/hooks.slack.com\/services\/T[A-Za-z0-9_]{8}\/B[A-Za-z0-9_]{8}\/[A-Za-z0-9_]{24}/,
+    },
+    { name: "Google API Key", regex: /AIza[0-9A-Za-z-_]{35}/ },
+    {
+      name: "Heroku API Key",
+      regex:
+        /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/,
+    },
+    { name: "Facebook Access Token", regex: /EAACEdEose0cBA[0-9A-Za-z]+/ },
+    {
+      name: "Twitter OAuth Secret",
+      regex: /[tT][wW][iI][tT][tT][eE][rR].*[0-9a-zA-Z]{35,44}/,
+    },
+    { name: "Mailgun API Key", regex: /key-[0-9a-zA-Z]{32}/ },
+    { name: "Twilio Account SID", regex: /AC[a-f0-9]{32}/ },
+    { name: "Twilio Auth Token", regex: /SK[a-f0-9]{32}/ },
   ];
 
   private readonly allowedExtensions = new Set([

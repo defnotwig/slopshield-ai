@@ -11,6 +11,7 @@ import { AIReviewerService } from "../ai-reviewer/ai-reviewer.service.js";
 import { ScoringService } from "../scoring/scoring.service.js";
 import { ReportService } from "../report/report.service.js";
 import { LarkService } from "../lark/lark.service.js";
+import { NotificationService } from "../notification/notification.service.js";
 
 @Processor("scan-pipeline")
 export class ScanProcessor extends WorkerHost {
@@ -25,6 +26,7 @@ export class ScanProcessor extends WorkerHost {
     private readonly scoringService: ScoringService,
     private readonly reportService: ReportService,
     private readonly larkService: LarkService,
+    private readonly notificationService: NotificationService,
   ) {
     super();
   }
@@ -235,6 +237,14 @@ export class ScanProcessor extends WorkerHost {
         await this.larkService.sendScanCard(scanId);
       } catch (larkErr: any) {
         this.logger.error(`Lark card push failed: ${larkErr.message}`);
+      }
+
+      try {
+        await this.notificationService.processScanNotifications(scanId);
+      } catch (alertErr: any) {
+        this.logger.error(
+          `Workspace alerts dispatch failed: ${alertErr.message}`,
+        );
       }
 
       // 8. Stage: COMPLETED

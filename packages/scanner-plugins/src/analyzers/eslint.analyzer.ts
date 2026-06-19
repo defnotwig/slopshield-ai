@@ -41,6 +41,22 @@ export class ESLintAnalyzer implements StaticAnalyzer {
       const eslintInstance = new ESLint({
         cwd: context.scanDir,
         useEslintrc: true, // Respect local workspace configuration
+        overrideConfig: {
+          env: {
+            node: true,
+            browser: true,
+            es2021: true,
+          },
+          rules: {
+            "no-eval": "error",
+            "no-implied-eval": "error",
+            "no-new-func": "error",
+            "no-console": "warn",
+            "no-debugger": "error",
+            "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+            eqeqeq: ["warn", "always"],
+          },
+        },
       });
 
       const results = await eslintInstance.lintFiles(

@@ -13,6 +13,7 @@ import { RulesModule } from "../rules/rules.module.js";
 import { LarkModule } from "../lark/lark.module.js";
 import { ReportModule } from "../report/report.module.js";
 import { AuthModule } from "../auth/auth.module.js";
+import { NotificationModule } from "../notification/notification.module.js";
 
 import { ScanService } from "./scan.service.js";
 import { ScanController } from "./scan.controller.js";
@@ -53,6 +54,7 @@ const queueProvider = {
     LarkModule,
     ReportModule,
     AuthModule,
+    NotificationModule,
     ...(isMemoryMode
       ? []
       : [

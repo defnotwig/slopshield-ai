@@ -1,6 +1,10 @@
 import { LarkScanSummary } from "@slopshield/shared";
 
 export class LarkCardBuilder {
+  /**
+   * Constructs the Lark interactive card payload for scans that passed security standards.
+   * Utilizes green styling cues, checkmark badges, and dynamic metadata fields.
+   */
   public static buildPassedCard(summary: LarkScanSummary): any {
     const findingsList = summary.topFindings.map((f) => ({
       tag: "div",
@@ -10,6 +14,16 @@ export class LarkCardBuilder {
       },
     }));
 
+    if (findingsList.length === 0) {
+      findingsList.push({
+        tag: "div",
+        text: {
+          tag: "lark_md",
+          content: "• *No issues identified. Codebase clean!*",
+        },
+      });
+    }
+
     return {
       config: {
         wide_screen_mode: true,
@@ -18,20 +32,52 @@ export class LarkCardBuilder {
         template: "green",
         title: {
           tag: "plain_text",
-          content: `🛡️ SlopShield Passed: ${summary.repository}`,
+          content: `🛡️ SlopShield Verified: Clean Code Ingested`,
         },
       },
       elements: [
         {
-          tag: "markdown",
-          content: `**Scan ID:** ${summary.scanId}\n**Author:** ${summary.author}\n**Overall Score:** **${summary.score}/100** (Passed)`,
+          tag: "div",
+          fields: [
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Repository / Source:**\n\`${summary.repository}\``,
+              },
+            },
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Overall Score:**\n**\`${summary.score}/100\`** (Passed)`,
+              },
+            },
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Ingestion ID:**\n\`#${summary.scanId.substring(0, 8)}\``,
+              },
+            },
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Status:**\n🟩 **PASSED**`,
+              },
+            },
+          ],
         },
         {
           tag: "hr",
         },
         {
-          tag: "markdown",
-          content: `**Top Quality Observations:**`,
+          tag: "div",
+          text: {
+            tag: "lark_md",
+            content: `**💡 Key Code Quality Observations:**`,
+          },
         },
         ...findingsList,
         {
@@ -54,10 +100,24 @@ export class LarkCardBuilder {
             },
           ],
         },
+        {
+          tag: "note",
+          elements: [
+            {
+              tag: "plain_text",
+              content:
+                "🛡️ SlopShield AI Ingestion Engine • Continuous Verification Active",
+            },
+          ],
+        },
       ],
     };
   }
 
+  /**
+   * Constructs the Lark interactive card payload for scans that failed security thresholds.
+   * Utilizes red warning badges, alarm headers, and secondary fix actions.
+   */
   public static buildBlockedCard(summary: LarkScanSummary): any {
     const findingsList = summary.topFindings.map((f) => ({
       tag: "div",
@@ -75,20 +135,52 @@ export class LarkCardBuilder {
         template: "red",
         title: {
           tag: "plain_text",
-          content: `🚨 SlopShield Blocked: ${summary.repository}`,
+          content: `🚨 SlopShield Alert: Blocker Identified`,
         },
       },
       elements: [
         {
-          tag: "markdown",
-          content: `**Scan ID:** ${summary.scanId}\n**Author:** ${summary.author}\n**Overall Score:** **${summary.score}/100** (Blocked)`,
+          tag: "div",
+          fields: [
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Repository / Source:**\n\`${summary.repository}\``,
+              },
+            },
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Overall Score:**\n**\`${summary.score}/100\`** (Blocked)`,
+              },
+            },
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Ingestion ID:**\n\`#${summary.scanId.substring(0, 8)}\``,
+              },
+            },
+            {
+              is_short: true,
+              text: {
+                tag: "lark_md",
+                content: `**Status:**\n🟥 **BLOCKED**`,
+              },
+            },
+          ],
         },
         {
           tag: "hr",
         },
         {
-          tag: "markdown",
-          content: `**Critical Blockers Identified:**`,
+          tag: "div",
+          text: {
+            tag: "lark_md",
+            content: `**⚠️ Critical Blockers & AI Slop Detected:**`,
+          },
         },
         ...findingsList,
         {
@@ -120,6 +212,16 @@ export class LarkCardBuilder {
                 action: "create-tasks",
                 scanId: summary.scanId,
               },
+            },
+          ],
+        },
+        {
+          tag: "note",
+          elements: [
+            {
+              tag: "plain_text",
+              content:
+                "🛡️ SlopShield AI Ingestion Engine • Continuous Verification Active",
             },
           ],
         },

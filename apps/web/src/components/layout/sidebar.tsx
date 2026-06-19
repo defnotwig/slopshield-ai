@@ -24,6 +24,7 @@ export function Sidebar() {
     { name: "Scan History", href: "/scans", icon: Search },
     { name: "Projects", href: "/projects", icon: FolderOpen },
     { name: "Rules Library", href: "/rules", icon: BookOpen },
+    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (
