@@ -6,6 +6,7 @@ import {
   TypeScriptAnalyzer,
   SecretAnalyzer,
   SemgrepAnalyzer,
+  SlopAnalyzer,
   AnalysisContext,
   AnalysisResult,
 } from "@slopshield/scanner-plugins";
@@ -22,6 +23,7 @@ export class ScannerOrchestrator implements OnModuleInit {
       new ESLintAnalyzer(),
       new TypeScriptAnalyzer(),
       new SemgrepAnalyzer(),
+      new SlopAnalyzer(),
     ];
 
     // Log available analyzers

@@ -4,3 +4,4 @@ export * from "./analyzers/secret.analyzer.js";
 export * from "./analyzers/eslint.analyzer.js";
 export * from "./analyzers/typescript.analyzer.js";
 export * from "./analyzers/semgrep.analyzer.js";
+export * from "./analyzers/slop.analyzer.js";
