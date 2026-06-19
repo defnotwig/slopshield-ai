@@ -27,7 +27,7 @@ export class DashboardService {
       completedScans.length > 0
         ? Math.round(
             completedScans.reduce(
-              (acc, curr) => acc + (curr.overallScore || 0),
+              (acc: number, curr: any) => acc + (curr.overallScore || 0),
               0,
             ) / completedScans.length,
           )
@@ -76,7 +76,7 @@ export class DashboardService {
       },
     });
 
-    return scans.map((s) => ({
+    return scans.map((s: any) => ({
       scanId: s.id,
       date: s.createdAt.toISOString().split("T")[0],
       score: s.overallScore,
@@ -103,7 +103,7 @@ export class DashboardService {
       },
     });
 
-    return categoriesGroup.map((g) => ({
+    return categoriesGroup.map((g: any) => ({
       category: g.category,
       count: g._count.id,
     }));

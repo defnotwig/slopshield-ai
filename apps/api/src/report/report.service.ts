@@ -47,14 +47,14 @@ export class ReportService {
         reliability: scan.backendScore ?? 0,
         documentation: 100, // Default base
       },
-      files: scan.scanFiles.map((f) => ({
+      files: scan.scanFiles.map((f: any) => ({
         path: f.filePath,
         language: f.language,
         fileType: f.fileType,
         isFrontend: f.isFrontend,
         isBackend: f.isBackend,
       })),
-      findings: scan.findings.map((f) => ({
+      findings: scan.findings.map((f: any) => ({
         id: f.id,
         severity: f.severity,
         category: f.category,

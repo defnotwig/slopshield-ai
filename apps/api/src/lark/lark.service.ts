@@ -42,7 +42,7 @@ export class LarkService {
         return false;
       }
 
-      const topFindings = scan.findings.map((f) => ({
+      const topFindings = scan.findings.map((f: any) => ({
         title: f.title,
         severity: f.severity,
       }));

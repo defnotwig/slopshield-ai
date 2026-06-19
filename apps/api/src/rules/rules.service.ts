@@ -88,7 +88,7 @@ export class RulesService implements OnModuleInit {
   public async getAllRules(): Promise<Rule[]> {
     // Load rules from DB to pick up any runtime toggles
     const dbRules = await this.prisma.rule.findMany();
-    return dbRules.map((dbRule) => {
+    return dbRules.map((dbRule: any) => {
       const cached = this.rulesCache.get(dbRule.ruleId);
       return {
         rule_id: dbRule.ruleId,
