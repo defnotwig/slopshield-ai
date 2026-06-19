@@ -1,0 +1,62 @@
+rules:
+  - rule_id: FRONTEND_A11Y_001
+    title: Clickable Element Lacks Accessibility Role
+    category: accessibility
+    severity: medium
+    applies_to:
+      - frontend
+    standards:
+      - WCAG_22
+      - ISO_25010
+    blocking: false
+    description: Element has onClick handler but lacks keyboard tabIndex or appropriate role (e.g. role="button").
+    recommendation: Use semantic <button> elements instead of <div> wrappers, or append role="button" and tabIndex={0}.
+
+  - rule_id: FRONTEND_A11Y_002
+    title: Form Input Lacks Accessible Label
+    category: accessibility
+    severity: medium
+    applies_to:
+      - frontend
+    standards:
+      - WCAG_22
+    blocking: false
+    description: Input field is not associated with any HTML label element or aria-label property.
+    recommendation: Link input to a label using htmlFor ID properties, or append aria-label text description.
+
+  - rule_id: FRONTEND_A11Y_003
+    title: Image Component Lacks Alt Tag
+    category: accessibility
+    severity: low
+    applies_to:
+      - frontend
+    standards:
+      - WCAG_22
+    blocking: false
+    description: Image asset rendering lacks alt attributes, breaking screen readers compatibility.
+    recommendation: Add an alt description string describing the image content, or set alt="" for decorative images.
+
+  - rule_id: FRONTEND_SEC_001
+    title: Dangerous HTML Injection Risk
+    category: frontend-security
+    severity: critical
+    applies_to:
+      - frontend
+    standards:
+      - OWASP_TOP_10
+      - CWE_TOP_25
+    blocking: true
+    description: Using dangerouslySetInnerHTML or innerHTML to inject raw variables, risking Cross-Site Scripting (XSS).
+    recommendation: Sanitize values with DOMPurify before rendering, or bind safe text nodes using children components.
+
+  - rule_id: FRONTEND_MAINT_001
+    title: Hardcoded API Endpoint URL
+    category: maintainability
+    severity: medium
+    applies_to:
+      - frontend
+    standards:
+      - CLEAN_CODE
+    blocking: false
+    description: File references API URLs (e.g. localhost:3001) in fetch/axios logic directly instead of using env configurations.
+    recommendation: Move target URL constants to environment variables (e.g. process.env.NEXT_PUBLIC_API_URL).

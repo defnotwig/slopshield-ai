@@ -1,0 +1,69 @@
+rules:
+  - rule_id: MAINT_001
+    title: Poor or Cryptic Naming Conventions
+    category: maintainability
+    severity: medium
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - CLEAN_CODE
+      - CODE_COMPLETE
+    blocking: false
+    description: Using single-letter variable names (e.g. x, y, a) or generic parameters (e.g. data, obj) in complex logic block context.
+    recommendation: Rename variables to descriptive, self-documenting terms (e.g. accountPayload, scanResult).
+
+  - rule_id: MAINT_002
+    title: Excessively Long Function
+    category: maintainability
+    severity: medium
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - CLEAN_CODE
+      - REFACTORING
+    blocking: false
+    description: Function size exceeds 60 lines, making it difficult to read, track scope, and refactor.
+    recommendation: Decompose logic block by extracting sub-routines into helper functions.
+
+  - rule_id: MAINT_003
+    title: Duplicated Logical Blocks
+    category: maintainability
+    severity: high
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - CLEAN_CODE
+      - PRAGMATIC_PROGRAMMER
+    blocking: false
+    description: Identical or highly similar code chunks copy-pasted across multiple files or methods.
+    recommendation: Extract duplicated algorithms to unified shared utilities or services.
+
+  - rule_id: MAINT_004
+    title: Dead or Unused Code Block
+    category: maintainability
+    severity: low
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - CLEAN_CODE
+    blocking: false
+    description: Unused imports, declared variables that are never read, or unreachable code branches.
+    recommendation: Remove unused imports and dead declarations to clean up file sizes.
+
+  - rule_id: MAINT_005
+    title: Hallucinated Module Import
+    category: maintainability
+    severity: high
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - CLEAN_CODE
+      - CODE_COMPLETE
+    blocking: true
+    description: Importing from files, styles, or packages that do not exist in project scope. Typical AI slop.
+    recommendation: Ensure files exist and check import declarations syntax matches target names.

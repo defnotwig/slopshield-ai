@@ -1,0 +1,55 @@
+rules:
+  - rule_id: ARCH_001
+    title: God Component Detected
+    category: frontend-architecture
+    severity: high
+    applies_to:
+      - frontend
+    standards:
+      - ISO_25010
+      - REFACTORING
+      - PHILOSOPHY_SOFTWARE_DESIGN
+    blocking: false
+    description: Component size exceeds 500 lines or mixes state, data fetching, business logic, and UI layout.
+    recommendation: Decompose UI elements into isolated dumb presentation components and move logic to custom hook wrappers.
+
+  - rule_id: ARCH_002
+    title: Fat Controller Class
+    category: backend-architecture
+    severity: high
+    applies_to:
+      - backend
+    standards:
+      - ISO_25010
+      - REFACTORING
+      - CODE_COMPLETE
+    blocking: false
+    description: Controller handles direct database queries, file stream parsings, or business workflows instead of delegating.
+    recommendation: Move business rules to service layers and query structures to repository handlers.
+
+  - rule_id: ARCH_003
+    title: Cross-Boundary Database Imports
+    category: backend-architecture
+    severity: critical
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - ISO_25010
+      - PHILOSOPHY_SOFTWARE_DESIGN
+    blocking: true
+    description: Importing prisma databases clients, backend models, or secrets directly inside client-side components.
+    recommendation: Access databases exclusively through API calls. Secure database schemas and logic inside backend boundaries.
+
+  - rule_id: ARCH_004
+    title: Missing Service Layer Separation
+    category: backend-architecture
+    severity: medium
+    applies_to:
+      - backend
+    standards:
+      - ISO_25010
+      - CLEAN_CODE
+    blocking: false
+    description: Controllers execute data queries directly (e.g. this.prisma.user.find) without modular service encapsulation.
+    recommendation: Create dedicated service classes to manage data access and isolate controllers from database internals.

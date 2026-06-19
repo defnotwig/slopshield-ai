@@ -1,0 +1,391 @@
+@import 'tailwindcss';
+
+/* ===================================================================
+   SlopShield AI — Tailwind v4 Theme & Global Styles
+   =================================================================== */
+
+@theme {
+  /* ---------- Typography ---------- */
+  --font-sans: 'Albert Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Alumni Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ---------- Light-Mode Colors (default) ---------- */
+  --color-background: #f7f4ef;
+  --color-foreground: #1c1a17;
+  --color-muted: #efebe4;
+  --color-muted-foreground: #8a8276;
+  --color-card: #fdfcfb;
+  --color-card-foreground: #1c1a17;
+  --color-popover: #fdfcfb;
+  --color-popover-foreground: #1c1a17;
+  --color-border: #e6dfd5;
+  --color-input: #e6dfd5;
+  --color-primary: #1c1a17;
+  --color-primary-foreground: #f7f4ef;
+  --color-secondary: #efebe4;
+  --color-secondary-foreground: #1c1a17;
+  --color-accent: #efebe4;
+  --color-accent-foreground: #1c1a17;
+  --color-destructive: #cc2900;
+  --color-destructive-foreground: #ffffff;
+  --color-ring: #0088cc;
+  --color-sidebar: #f2ede4;
+  --color-sidebar-foreground: #5a544a;
+  --color-sidebar-active: #1c1a17;
+
+  /* ---------- Severity Colors ---------- */
+  --color-severity-critical: #ff003c;
+  --color-severity-high: #ff7b00;
+  --color-severity-medium: #d97706;
+  --color-severity-low: #00f0ff;
+  --color-severity-info: #737373;
+
+  /* ---------- Status Colors ---------- */
+  --color-status-passed: #00ff66;
+  --color-status-warning: #ff7b00;
+  --color-status-risky: #ea580c;
+  --color-status-blocked: #ff003c;
+
+  /* ---------- Chart Colors ---------- */
+  --color-chart-1: #ffffff;
+  --color-chart-2: #00f0ff;
+  --color-chart-3: #00ff66;
+  --color-chart-4: #ff7b00;
+  --color-chart-5: #ff003c;
+
+  /* ---------- Radius ---------- */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.125rem;
+  --radius-lg: 0.125rem;
+  --radius-xl: 0.125rem;
+}
+
+/* ===================================================================
+   Dark Theme Override (Impeccable Pure Black Style)
+   =================================================================== */
+.dark {
+  --color-background: #010101;
+  --color-foreground: #ffffff;
+  --color-muted: #080808;
+  --color-muted-foreground: #737373;
+  --color-card: #040404;
+  --color-card-foreground: #ffffff;
+  --color-popover: #040404;
+  --color-popover-foreground: #ffffff;
+  --color-border: #1a1a1a;
+  --color-input: #1a1a1a;
+  --color-primary: #ffffff;
+  --color-primary-foreground: #010101;
+  --color-secondary: #080808;
+  --color-secondary-foreground: #ffffff;
+  --color-accent: #0f0f0f;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #ff003c;
+  --color-destructive-foreground: #ffffff;
+  --color-ring: #00f0ff;
+  --color-sidebar: #010101;
+  --color-sidebar-foreground: #737373;
+  --color-sidebar-active: #ffffff;
+
+  /* ---------- Severity Colors (Neon/Impeccable in dark) ---------- */
+  --color-severity-critical: #ff003c;
+  --color-severity-high: #ff7b00;
+  --color-severity-medium: #ffaa00;
+  --color-severity-low: #00f0ff;
+  --color-severity-info: #737373;
+
+  /* ---------- Status Colors (Neon/Impeccable in dark) ---------- */
+  --color-status-passed: #00ff66;
+  --color-status-warning: #ffaa00;
+  --color-status-risky: #ff7b00;
+  --color-status-blocked: #ff003c;
+
+  /* ---------- Chart Colors ---------- */
+  --color-chart-1: #ffffff;
+  --color-chart-2: #00f0ff;
+  --color-chart-3: #00ff66;
+  --color-chart-4: #ff7b00;
+  --color-chart-5: #ff003c;
+}
+
+/* ===================================================================
+   Base Resets & Transitions
+   =================================================================== */
+*,
+*::before,
+*::after {
+  border-color: var(--color-border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--color-foreground);
+  background-color: var(--color-background);
+  font-family: var(--font-sans);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===================================================================
+   Dark-mode Scrollbar
+   =================================================================== */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #38445a;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5e7a;
+}
+
+/* ===================================================================
+   Glassmorphism Utilities
+   =================================================================== */
+.glass-card {
+  background: rgba(17, 24, 39, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 68, 90, 0.35);
+  border-radius: var(--radius-lg);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 212, 255, 0.25);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.06);
+}
+
+.glass-panel {
+  background: rgba(17, 24, 39, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 68, 90, 0.3);
+}
+
+/* Light mode: disable glass effects */
+:root .glass-card,
+:root .glass-panel {
+  background: #ffffff;
+  backdrop-filter: none;
+  border: 1px solid var(--color-border);
+}
+
+/* ===================================================================
+   Neon Glow Utilities
+   =================================================================== */
+.neon-glow {
+  box-shadow:
+    0 0 5px rgba(0, 212, 255, 0.2),
+    0 0 20px rgba(0, 212, 255, 0.1),
+    0 0 40px rgba(0, 212, 255, 0.05);
+}
+
+.neon-border {
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.06);
+}
+
+.neon-text {
+  color: #00d4ff;
+  text-shadow:
+    0 0 7px rgba(0, 212, 255, 0.5),
+    0 0 20px rgba(0, 212, 255, 0.25);
+}
+
+/* Light mode: strip neon effects */
+:root .neon-glow,
+:root .neon-border {
+  box-shadow: none;
+  border-color: var(--color-border);
+}
+:root .neon-text {
+  color: var(--color-primary);
+  text-shadow: none;
+}
+
+/* ===================================================================
+   Score Gauge Animation
+   =================================================================== */
+@keyframes score-fill {
+  0% {
+    stroke-dashoffset: 283;
+  }
+  100% {
+    stroke-dashoffset: var(--score-offset, 0);
+  }
+}
+
+@keyframes score-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 5px rgba(0, 212, 255, 0.3),
+      0 0 20px rgba(0, 212, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 15px rgba(0, 212, 255, 0.5),
+      0 0 40px rgba(0, 212, 255, 0.25);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes count-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===================================================================
+   Animation Utilities
+   =================================================================== */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+.animate-count-up {
+  animation: count-up 0.6s ease-out forwards;
+}
+
+/* Staggered children */
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 320ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 480ms; }
+
+/* ===================================================================
+   Gradient Text Utility
+   =================================================================== */
+.gradient-text {
+  background: linear-gradient(135deg, #00d4ff 0%, #00ff88 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+:root .gradient-text {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===================================================================
+   Background Patterns
+   =================================================================== */
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(56, 68, 90, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 68, 90, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+:root .bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}

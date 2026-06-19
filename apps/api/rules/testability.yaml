@@ -1,0 +1,41 @@
+rules:
+  - rule_id: TEST_001
+    title: No Tests for High-Risk Change
+    category: testability
+    severity: high
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - NIST_SSDF
+      - CODE_COMPLETE
+    blocking: true
+    description: Modifying transaction, auth, or security controller files without adding matching unit or integration tests.
+    recommendation: Add unit spec test files (e.g. *.spec.ts) targeting the updated functions or endpoints.
+
+  - rule_id: TEST_002
+    title: Missing Negative Path Tests
+    category: testability
+    severity: medium
+    applies_to:
+      - backend
+    standards:
+      - CLEAN_CODE
+      - CODE_COMPLETE
+    blocking: false
+    description: Test suites verify only positive logic (happy path) and omit validation error and exception flows.
+    recommendation: Add test cases verifying that bad input throws BadRequest or Forbidden errors.
+
+  - rule_id: TEST_003
+    title: Untestable Code Structure
+    category: testability
+    severity: medium
+    applies_to:
+      - backend
+      - frontend
+    standards:
+      - CLEAN_CODE
+      - PRAGMATIC_PROGRAMMER
+    blocking: false
+    description: Hardcoded dependencies, direct globals mutations, or high cyclomatic complexity make it difficult to mock or run unit tests.
+    recommendation: Inject external modules via constructor dependency injection or hook properties rather than instantiating inside functions.

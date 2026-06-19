@@ -1,0 +1,32 @@
+{
+  "name": "slopshield-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SlopShield AI — Detect AI-generated code slop before it reaches production",
+  "author": "Solutions IT Department",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "db:migrate": "pnpm --filter @slopshield/api run db:migrate",
+    "db:seed": "pnpm --filter @slopshield/api run db:seed",
+    "db:studio": "pnpm --filter @slopshield/api run db:studio",
+    "db:reset": "pnpm --filter @slopshield/api run db:reset",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.0",
+    "rimraf": "^6.0.0",
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

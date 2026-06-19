@@ -1,0 +1,79 @@
+rules:
+  - rule_id: BACKEND_AUTH_001
+    title: Missing Auth Guard on Route
+    category: backend-security
+    severity: high
+    applies_to:
+      - backend
+    standards:
+      - OWASP_TOP_10
+      - OWASP_API_TOP_10
+      - OWASP_ASVS
+    blocking: true
+    description: Exposes sensitive controllers or routes without authentication guards or tokens validation.
+    recommendation: Decorate endpoint or controller class with @UseGuards(JwtAuthGuard) to restrict access.
+
+  - rule_id: BACKEND_VALID_001
+    title: Unvalidated Request DTO
+    category: backend-security
+    severity: medium
+    applies_to:
+      - backend
+    standards:
+      - OWASP_TOP_10
+      - CWE_TOP_25
+    blocking: false
+    description: Route accepts request payload body without schema parsing or pipeline validation.
+    recommendation: Define explicit Zod schemas or use ZodValidationPipe on the body parameters.
+
+  - rule_id: BACKEND_SQL_001
+    title: SQL Injection Vulnerability
+    category: backend-security
+    severity: critical
+    applies_to:
+      - backend
+    standards:
+      - OWASP_TOP_10
+      - CWE_TOP_25
+    blocking: true
+    description: SQL query constructed dynamically using raw string interpolations, allowing SQL Injection.
+    recommendation: Refactor query to use parameterized queries, Prisma ORM, or query builder methods.
+
+  - rule_id: BACKEND_SECRET_001
+    title: Hardcoded Secrets or Tokens
+    category: backend-security
+    severity: critical
+    applies_to:
+      - backend
+      - general
+    standards:
+      - OWASP_TOP_10
+      - CWE_TOP_25
+    blocking: true
+    description: Plaintext database connection strings, passwords, or cloud API keys embedded in the source file.
+    recommendation: Remove plaintext tokens. Inject via ConfigService or Doppler environment variables.
+
+  - rule_id: BACKEND_MASS_001
+    title: Mass Assignment Vulnerability
+    category: backend-security
+    severity: high
+    applies_to:
+      - backend
+    standards:
+      - OWASP_TOP_10
+      - OWASP_API_TOP_10
+    blocking: true
+    description: Directly passing unverified req.body objects to database insert or update calls.
+    recommendation: Map body payload fields explicitly to validated schemas or DTO entities.
+
+  - rule_id: BACKEND_RATE_001
+    title: Missing Rate Limiting on Public API
+    category: backend-security
+    severity: medium
+    applies_to:
+      - backend
+    standards:
+      - OWASP_API_TOP_10
+    blocking: false
+    description: Route accepts infinite client requests without throttling, leaving it vulnerable to DoS.
+    recommendation: Implement throttler guards or apply rate limit middleware to endpoints.

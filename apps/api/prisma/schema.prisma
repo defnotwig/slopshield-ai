@@ -1,0 +1,195 @@
+// =============================================================================
+// SlopShield AI — Prisma Schema
+// =============================================================================
+// Defines all database models for the SlopShield scan pipeline, findings,
+// scoring, Lark integration, and user/project management.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// User — Authenticated users who trigger scans and receive assignments
+// ---------------------------------------------------------------------------
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       String   @default("developer")
+  larkUserId String?  @map("lark_user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  scanJobs ScanJob[]
+  fixTasks FixTask[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Project — Repositories or codebases that are scanned
+// ---------------------------------------------------------------------------
+model Project {
+  id             String   @id @default(uuid())
+  name           String
+  repositoryUrl  String?  @map("repository_url")
+  framework      String?
+  minimumScore   Int      @default(80) @map("minimum_score")
+  larkChatId     String?  @map("lark_chat_id")
+  teamLeadLarkId String?  @map("team_lead_lark_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  scanJobs ScanJob[]
+
+  @@map("projects")
+}
+
+// ---------------------------------------------------------------------------
+// ScanJob — A single scan execution with pipeline status tracking
+// ---------------------------------------------------------------------------
+model ScanJob {
+  id                   String    @id @default(uuid())
+  projectId            String?   @map("project_id")
+  triggerType          String    @default("manual") @map("trigger_type")
+  sourceType           String    @map("source_type")
+  sourceRef            String?   @map("source_ref")
+  status               String    @default("queued")
+  overallScore         Int?      @map("overall_score")
+  securityScore        Int?      @map("security_score")
+  maintainabilityScore Int?      @map("maintainability_score")
+  architectureScore    Int?      @map("architecture_score")
+  testabilityScore     Int?      @map("testability_score")
+  frontendScore        Int?      @map("frontend_score")
+  backendScore         Int?      @map("backend_score")
+  statusResult         String?   @map("status_result")
+  aiSummary            String?   @map("ai_summary")
+  refactorPlan         Json?     @map("refactor_plan")
+  recommendedTests     Json?     @map("recommended_tests")
+  startedBy            String?   @map("started_by")
+  startedAt            DateTime? @map("started_at")
+  completedAt          DateTime? @map("completed_at")
+  scanMode             String    @default("full") @map("scan_mode")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  project       Project?    @relation(fields: [projectId], references: [id])
+  startedByUser User?       @relation(fields: [startedBy], references: [id])
+  scanFiles     ScanFile[]
+  findings      Finding[]
+  larkEvents    LarkEvent[]
+
+  @@map("scan_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// ScanFile — Individual files processed during a scan
+// ---------------------------------------------------------------------------
+model ScanFile {
+  id           String   @id @default(uuid())
+  scanJobId    String   @map("scan_job_id")
+  filePath     String   @map("file_path")
+  language     String?
+  fileType     String?  @map("file_type")
+  linesAdded   Int?     @map("lines_added")
+  linesRemoved Int?     @map("lines_removed")
+  isFrontend   Boolean  @default(false) @map("is_frontend")
+  isBackend    Boolean  @default(false) @map("is_backend")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  scanJob ScanJob @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
+
+  @@map("scan_files")
+}
+
+// ---------------------------------------------------------------------------
+// Finding — A single issue/violation discovered during scanning
+// ---------------------------------------------------------------------------
+model Finding {
+  id                String   @id @default(uuid())
+  scanJobId         String   @map("scan_job_id")
+  filePath          String?  @map("file_path")
+  lineNumber        Int?     @map("line_number")
+  severity          String
+  category          String
+  title             String
+  description       String?
+  standardReference String?  @map("standard_reference")
+  recommendation    String?
+  suggestedTests    Json?    @map("suggested_tests")
+  blocking          Boolean  @default(false)
+  confidence        Float?   @default(0.5)
+  source            String
+  codeSnippet       String?  @map("code_snippet")
+  falsePositive     Boolean  @default(false) @map("false_positive")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  scanJob  ScanJob   @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
+  fixTasks FixTask[]
+
+  @@map("findings")
+}
+
+// ---------------------------------------------------------------------------
+// Rule — Configurable static analysis rules loaded from YAML
+// ---------------------------------------------------------------------------
+model Rule {
+  id        String   @id @default(uuid())
+  ruleId    String   @unique @map("rule_id")
+  title     String
+  category  String
+  severity  String
+  appliesTo Json     @map("applies_to")
+  standards Json
+  blocking  Boolean  @default(false)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("rules")
+}
+
+// ---------------------------------------------------------------------------
+// LarkEvent — Audit log for Lark message card sends and webhook events
+// ---------------------------------------------------------------------------
+model LarkEvent {
+  id        String   @id @default(uuid())
+  scanJobId String?  @map("scan_job_id")
+  eventType String   @map("event_type")
+  messageId String?  @map("message_id")
+  chatId    String?  @map("chat_id")
+  status    String
+  payload   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  scanJob ScanJob? @relation(fields: [scanJobId], references: [id], onDelete: SetNull)
+
+  @@map("lark_events")
+}
+
+// ---------------------------------------------------------------------------
+// FixTask — Remediation task assigned to a developer for a specific finding
+// ---------------------------------------------------------------------------
+model FixTask {
+  id          String   @id @default(uuid())
+  findingId   String   @map("finding_id")
+  assignedTo  String?  @map("assigned_to")
+  status      String   @default("open")
+  title       String
+  description String?
+  larkTaskId  String?  @map("lark_task_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  finding  Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  assignee User?   @relation(fields: [assignedTo], references: [id])
+
+  @@map("fix_tasks")
+}
