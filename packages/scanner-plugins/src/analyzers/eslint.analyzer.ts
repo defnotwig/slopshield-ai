@@ -38,26 +38,50 @@ export class ESLintAnalyzer implements StaticAnalyzer {
       // Dynamically load ESLint to prevent require errors at startup if it's missing
       const { ESLint } = require("eslint");
 
-      const eslintInstance = new ESLint({
-        cwd: context.scanDir,
-        useEslintrc: true, // Respect local workspace configuration
-        overrideConfig: {
-          env: {
-            node: true,
-            browser: true,
-            es2021: true,
+            let eslintInstance: any;
+      try {
+        eslintInstance = new ESLint({
+          cwd: context.scanDir,
+          useEslintrc: true,
+          overrideConfig: {
+            env: {
+              node: true,
+              browser: true,
+              es2021: true,
+            },
+            rules: {
+              "no-eval": "error",
+              "no-implied-eval": "error",
+              "no-new-func": "error",
+              "no-console": "warn",
+              "no-debugger": "error",
+              "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+              eqeqeq: ["warn", "always"],
+            },
           },
-          rules: {
-            "no-eval": "error",
-            "no-implied-eval": "error",
-            "no-new-func": "error",
-            "no-console": "warn",
-            "no-debugger": "error",
-            "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-            eqeqeq: ["warn", "always"],
-          },
-        },
-      });
+        });
+      } catch (err: any) {
+        eslintInstance = new ESLint({
+          cwd: context.scanDir,
+          overrideConfig: [
+            {
+              languageOptions: {
+                ecmaVersion: "latest",
+                sourceType: "module",
+              },
+              rules: {
+                "no-eval": "error",
+                "no-implied-eval": "error",
+                "no-new-func": "error",
+                "no-console": "warn",
+                "no-debugger": "error",
+                "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+                eqeqeq: ["warn", "always"],
+              },
+            },
+          ],
+        });
+      }
 
       const results = await eslintInstance.lintFiles(
         context.files.map((file) => `${context.scanDir}/${file}`),
