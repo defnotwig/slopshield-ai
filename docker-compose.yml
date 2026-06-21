@@ -4,7 +4,7 @@ services:
     container_name: slopshield-postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: slopshield
       POSTGRES_PASSWORD: slopshield_dev
