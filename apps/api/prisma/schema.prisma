@@ -73,6 +73,7 @@ model ScanJob {
   frontendScore        Int?      @map("frontend_score")
   backendScore         Int?      @map("backend_score")
   statusResult         String?   @map("status_result")
+  failureReason        String?   @map("failure_reason")
   aiSummary            String?   @map("ai_summary")
   refactorPlan         Json?     @map("refactor_plan")
   recommendedTests     Json?     @map("recommended_tests")

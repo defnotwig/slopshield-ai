@@ -52,3 +52,5 @@ redis_data/
 # Misc
 *.tsbuildinfo
 *.log
+
+.vercel

@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ScanGateway } from "./scan.gateway.js";
+import { redactSecrets } from "./secret-redactor.js";
 import { FileClassifier } from "@slopshield/scanner-plugins";
 import { ScannerOrchestrator } from "../scanner/scanner.orchestrator.js";
 import { AIReviewerService } from "../ai-reviewer/ai-reviewer.service.js";
@@ -108,7 +109,9 @@ export class ScanProcessor extends WorkerHost {
       if (codeFiles.length > 0) {
         const fileContents = codeFiles.map((f) => ({
           path: f.path,
-          content: fs.readFileSync(path.join(scanDir, f.path), "utf8"),
+          content: redactSecrets(
+            fs.readFileSync(path.join(scanDir, f.path), "utf8"),
+          ),
           language: f.language,
           isFrontend: f.isFrontend,
           isBackend: f.isBackend,
@@ -267,6 +270,7 @@ export class ScanProcessor extends WorkerHost {
         data: {
           status: "failed",
           statusResult: "blocked",
+          failureReason: err.message,
           completedAt: new Date(),
         },
       });
