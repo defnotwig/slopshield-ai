@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { ScanService } from "./scan.service.js";
@@ -163,8 +163,10 @@ describe("ScanService.createScan repository branch", () => {
       scanMode: "full",
     } as CreateScanInput;
 
+    // A "not-found" ingestion failure is mapped to an HTTP 404 NotFoundException
+    // (not a raw 500). The job is still created, marked failed, and cleaned up.
     await expect(service.createScan(input)).rejects.toBeInstanceOf(
-      GitHubIngestionError,
+      NotFoundException,
     );
 
     // Job was created, then marked failed with a reason.

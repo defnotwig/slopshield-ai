@@ -54,3 +54,4 @@ redis_data/
 *.log
 
 .vercel
+.env*.local
