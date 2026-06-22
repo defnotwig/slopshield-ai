@@ -1,8 +1,20 @@
 import { Injectable } from "@nestjs/common";
-import { Finding, STANDARDS_REFERENCES } from "@slopshield/shared";
+import { STANDARDS_REFERENCES } from "@slopshield/shared";
 
 @Injectable()
 export class StandardsMapper {
+  /**
+   * Documented fallback Standard_Reference (Requirement 6.7).
+   *
+   * ISO/IEC 25010 is the broadest software-quality model in
+   * `STANDARDS_REFERENCES` and is applicable to any finding category
+   * (security, accessibility, architecture, maintainability, testability,
+   * reliability, etc.). It is used whenever no more specific standard
+   * matches, guaranteeing that every finding carries at least one valid
+   * reference.
+   */
+  private static readonly FALLBACK_STANDARD = "ISO_25010";
+
   /**
    * Evaluates a finding to map it to corresponding security / quality standards.
    * Modifies standardReferences array in-place or returns a list of matched standard IDs.
@@ -142,11 +154,24 @@ export class StandardsMapper {
       matchedStandards.add("CODE_COMPLETE");
     }
 
-    // Fallback standard if none matched
+    // Documented fallback (Requirement 6.7): if no specific category rule
+    // matched, assign the general software-quality reference so that every
+    // finding carries at least one valid STANDARDS_REFERENCES key.
     if (matchedStandards.size === 0) {
-      matchedStandards.add("CLEAN_CODE");
+      matchedStandards.add(StandardsMapper.FALLBACK_STANDARD);
     }
 
-    return Array.from(matchedStandards);
+    // Defensive guarantee: only emit keys that actually exist in
+    // STANDARDS_REFERENCES, and never return an empty array. If filtering
+    // ever removes everything, fall back to the documented reference.
+    const validReferences = Array.from(matchedStandards).filter(
+      (key) => key in STANDARDS_REFERENCES,
+    );
+
+    if (validReferences.length === 0) {
+      validReferences.push(StandardsMapper.FALLBACK_STANDARD);
+    }
+
+    return validReferences;
   }
 }

@@ -19,6 +19,7 @@ import { ScanService } from "./scan.service.js";
 import { ScanController } from "./scan.controller.js";
 import { ScanProcessor } from "./scan.processor.js";
 import { ScanGateway } from "./scan.gateway.js";
+import { GitHubIngestionService } from "./github-ingestion.service.js";
 
 const isMemoryMode = process.env.QUEUE_MODE === "memory";
 
@@ -68,6 +69,7 @@ const queueProvider = {
     ScanService,
     ScanProcessor,
     ScanGateway,
+    GitHubIngestionService,
     ...(isMemoryMode ? [queueProvider] : []),
   ],
   exports: [ScanService],

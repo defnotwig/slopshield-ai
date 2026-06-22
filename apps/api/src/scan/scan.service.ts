@@ -11,6 +11,10 @@ import * as path from "path";
 import AdmZip from "adm-zip";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { CreateScanInput } from "@slopshield/shared";
+import {
+  GitHubIngestionService,
+  GitHubIngestionError,
+} from "./github-ingestion.service.js";
 
 @Injectable()
 export class ScanService {
@@ -20,6 +24,7 @@ export class ScanService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue("scan-pipeline") private readonly scanQueue: Queue,
+    private readonly githubIngestion: GitHubIngestionService,
   ) {
     this.tempBaseDir = path.join(process.cwd(), "temp-scans");
     if (!fs.existsSync(this.tempBaseDir)) {
@@ -46,6 +51,34 @@ export class ScanService {
       throw new BadRequestException(
         'Demo sample ID is required for sourceType: "demo-sample"',
       );
+    }
+    if (input.sourceType === "repository" && !input.sourceRef) {
+      throw new BadRequestException(
+        'A repository URL is required for sourceType: "repository"',
+      );
+    }
+
+    // For repository scans, run the synchronous URL/ref validation up-front so
+    // that invalid-input failures surface as HTTP 400 *before* a ScanJob row is
+    // created or queued (Req 1.2, 2.x, 11.1). Fetch/extract failures are handled
+    // later as a failed ScanJob.
+    if (input.sourceType === "repository") {
+      try {
+        const parsed = this.githubIngestion.validateUrl(input.sourceRef!);
+        // CreateScanInput carries no explicit ref field; the ref (if any) is
+        // embedded in the URL path (/tree/<ref>) and parsed by validateUrl.
+        this.githubIngestion.validateRef(parsed.ref);
+      } catch (err) {
+        if (
+          err instanceof GitHubIngestionError &&
+          (err.kind === "invalid-url" ||
+            err.kind === "not-a-repo-url" ||
+            err.kind === "invalid-ref")
+        ) {
+          throw new BadRequestException(err.message);
+        }
+        throw err;
+      }
     }
 
     const scanJob = await this.prisma.scanJob.create({
@@ -81,6 +114,19 @@ export class ScanService {
           );
         }
         this.copyFolderSync(demoDir, scanDir);
+      } else if (input.sourceType === "repository") {
+        // Fetch + extract the repository tarball into scanDir. Synchronous
+        // validation already ran up-front; here only fetch/extract failures
+        // (not-found, private-no-token, too-large, too-many-files, timeout,
+        // network-error) can occur, and they mark the ScanJob as failed.
+        // The explicit ref arg is undefined: CreateScanInput has no separate
+        // ref field, so the ref is taken from the URL path by the ingest service.
+        await this.githubIngestion.ingest(
+          input.sourceRef!,
+          undefined,
+          scanJob.id,
+          scanDir,
+        );
       }
 
       // Add to BullMQ queue
@@ -97,9 +143,13 @@ export class ScanService {
       );
       await this.prisma.scanJob.update({
         where: { id: scanJob.id },
-        data: { status: "failed", statusResult: "blocked" },
+        data: {
+          status: "failed",
+          statusResult: "blocked",
+          failureReason: err?.message ?? "Scan ingestion failed",
+        },
       });
-      // Clean up directory if created
+      // Clean up directory if created (ingest may have already removed it).
       if (fs.existsSync(scanDir)) {
         fs.rmSync(scanDir, { recursive: true, force: true });
       }
