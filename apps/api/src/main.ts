@@ -13,9 +13,22 @@ import compression from "compression";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
+import { resolvePort, findMissingEnv } from "./common/env";
 
-async function bootstrap(): Promise<void> {
+export async function bootstrap(): Promise<void> {
   const logger = new Logger("Bootstrap");
+
+  // ---------------------------------------------------------------------------
+  // Boot-time env validation — in production, abort the boot if any required
+  // environment variable is missing so deployment failures surface clearly.
+  // ---------------------------------------------------------------------------
+  const missing = findMissingEnv();
+  if (missing.length > 0) {
+    logger.error(
+      `Missing required environment variable(s) in production: ${missing.join(", ")}`,
+    );
+    throw new Error(`Missing required env: ${missing.join(", ")}`);
+  }
 
   const app = await NestFactory.create(AppModule, {
     logger: ["error", "warn", "log", "debug", "verbose"],
@@ -58,10 +71,11 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   // ---------------------------------------------------------------------------
-  // Start listening on the configured port (default 3001).
+  // Start listening on the resolved port. Precedence: PORT (injected by Render)
+  // → API_PORT → 3001. Bind 0.0.0.0 so the host can route external traffic.
   // ---------------------------------------------------------------------------
-  const port = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 3001;
-  await app.listen(port);
+  const port = resolvePort();
+  await app.listen(port, "0.0.0.0");
 
   logger.log(
     `🛡️  SlopShield AI API is running on http://localhost:${port}/api`,
@@ -70,4 +84,14 @@ async function bootstrap(): Promise<void> {
   logger.log(`🌐 CORS origin: ${corsOrigin}`);
 }
 
-bootstrap();
+// Only auto-bootstrap when this module is the process entry point. This keeps
+// `bootstrap()` importable (and awaitable) from unit tests without triggering a
+// fire-and-forget boot at import time. Errors during the real boot exit non-zero
+// so deployment failures surface clearly.
+if (require.main === module) {
+  bootstrap().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    process.exit(1);
+  });
+}

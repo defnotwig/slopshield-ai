@@ -38,8 +38,19 @@ export class PrismaService
    */
   async onModuleInit(): Promise<void> {
     this.logger.log("Connecting to PostgreSQL via Prisma…");
-    await this.$connect();
-    this.logger.log("PostgreSQL connection established.");
+    try {
+      await this.$connect();
+      this.logger.log("PostgreSQL connection established.");
+    } catch (error) {
+      // Log a descriptive connection error WITHOUT leaking the DATABASE_URL,
+      // which contains host and credentials. Only the error message is logged.
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to connect to PostgreSQL via Prisma. Verify DATABASE_URL is reachable and credentials are valid. Cause: ${message}`,
+      );
+      // Re-throw so Nest aborts boot (existing fail-fast behavior).
+      throw error;
+    }
   }
 
   /**

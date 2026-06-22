@@ -13,8 +13,9 @@ import { ScoringService } from "../scoring/scoring.service.js";
 import { ReportService } from "../report/report.service.js";
 import { LarkService } from "../lark/lark.service.js";
 import { NotificationService } from "../notification/notification.service.js";
+import { capFiles, maxAnalyzeFiles } from "../common/env.js";
 
-@Processor("scan-pipeline")
+@Processor("scan-pipeline", { concurrency: 1 })
 export class ScanProcessor extends WorkerHost {
   private readonly logger = new Logger(ScanProcessor.name);
   private readonly fileClassifier = new FileClassifier();
@@ -83,9 +84,12 @@ export class ScanProcessor extends WorkerHost {
       );
       const staticFindings = await this.orchestrator.runAll({
         scanDir,
-        files: classified
-          .filter((f) => f.fileType !== "dependency")
-          .map((f) => f.path),
+        files: capFiles(
+          classified
+            .filter((f) => f.fileType !== "dependency")
+            .map((f) => f.path),
+          maxAnalyzeFiles(),
+        ),
         scanId,
       });
 
@@ -102,9 +106,12 @@ export class ScanProcessor extends WorkerHost {
       let recommendedTests: string[] = [];
 
       // We only run AI review on actual source code files, and limit total context size
-      const codeFiles = classified
-        .filter((f) => f.fileType === "frontend" || f.fileType === "backend")
-        .slice(0, 10); // Cap at 10 files for hackathon context limit
+      const codeFiles = capFiles(
+        classified.filter(
+          (f) => f.fileType === "frontend" || f.fileType === "backend",
+        ),
+        maxAnalyzeFiles(),
+      );
 
       if (codeFiles.length > 0) {
         const fileContents = codeFiles.map((f) => ({

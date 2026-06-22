@@ -15,6 +15,9 @@ import {
 export class ScannerOrchestrator implements OnModuleInit {
   private readonly logger = new Logger(ScannerOrchestrator.name);
   private analyzers: StaticAnalyzer[] = [];
+  private readonly analyzerTimeoutMs = Number(
+    process.env.ANALYZER_TIMEOUT_MS ?? 45_000,
+  );
 
   public async onModuleInit(): Promise<void> {
     // Register all pluggable static analyzers
@@ -70,7 +73,7 @@ export class ScannerOrchestrator implements OnModuleInit {
 
     const promises = activeAnalyzers.map(async (analyzer) => {
       try {
-        const result = await analyzer.analyze(context);
+        const result = await this.runWithTimeout(analyzer, context);
         return result;
       } catch (err: any) {
         return {
@@ -110,5 +113,40 @@ export class ScannerOrchestrator implements OnModuleInit {
     }
 
     return combinedFindings;
+  }
+
+  /**
+   * Races an analyzer's `analyze()` against the configured timeout. On timeout
+   * this resolves (never rejects) to a failed `AnalysisResult` so that a hung
+   * analyzer cannot stall or crash the overall scan. The timer is always
+   * cleared in a `finally` block.
+   *
+   * @param analyzer The static analyzer to run
+   * @param context Ingestion context containing scan directory and target files
+   * @returns The analyzer's result, or a failed result on timeout
+   */
+  private async runWithTimeout(
+    analyzer: StaticAnalyzer,
+    context: AnalysisContext,
+  ): Promise<AnalysisResult> {
+    let timer: NodeJS.Timeout;
+    const timeout = new Promise<AnalysisResult>((resolve) => {
+      timer = setTimeout(
+        () =>
+          resolve({
+            analyzerName: analyzer.name,
+            success: false,
+            findings: [],
+            error: `Analyzer timed out after ${this.analyzerTimeoutMs}ms`,
+            durationMs: this.analyzerTimeoutMs,
+          }),
+        this.analyzerTimeoutMs,
+      );
+    });
+    try {
+      return await Promise.race([analyzer.analyze(context), timeout]);
+    } finally {
+      clearTimeout(timer!);
+    }
   }
 }
