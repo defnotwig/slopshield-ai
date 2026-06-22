@@ -11,10 +11,12 @@ import * as path from "path";
 dotenv.config({ path: path.join(process.cwd(), "../../.env") });
 dotenv.config({ path: path.join(process.cwd(), ".env") });
 
-import { Module } from "@nestjs/common";
+import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { BullModule } from "@nestjs/bullmq";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import IORedis from "ioredis";
+import type { ConnectionOptions } from "bullmq";
 
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
@@ -28,6 +30,11 @@ import { AIReviewerModule } from "./ai-reviewer/ai-reviewer.module";
 import { ScoringModule } from "./scoring/scoring.module";
 import { ReportModule } from "./report/report.module";
 import { NotificationModule } from "./notification/notification.module";
+import { HealthModule } from "./health/health.module.js";
+import {
+  buildRedisConnection,
+  attachRedisErrorLogger,
+} from "./common/redis.js";
 
 @Module({
   imports: [
@@ -51,18 +58,18 @@ import { NotificationModule } from "./notification/notification.module";
             imports: [ConfigModule],
             inject: [ConfigService],
             useFactory: (config: ConfigService) => {
-              const redisUrl = config.get<string>(
-                "REDIS_URL",
-                "redis://localhost:6379",
+              // Build the connection options from REDIS_URL (shape unchanged).
+              const connection = buildRedisConnection(
+                config.get<string>("REDIS_URL", "redis://localhost:6379"),
               );
-              const url = new URL(redisUrl);
-              return {
-                connection: {
-                  host: url.hostname,
-                  port: parseInt(url.port, 10) || 6379,
-                  password: url.password || undefined,
-                },
-              };
+              // Create a shared ioredis instance so we can attach an `error`
+              // listener that logs descriptive Redis connection failures
+              // (Requirement 12.3). The connection options are passed through
+              // verbatim — buildRedisConnection's output shape is preserved.
+              const redisLogger = new Logger("RedisConnection");
+              const client = new IORedis(connection);
+              attachRedisErrorLogger(client, redisLogger);
+              return { connection: client as unknown as ConnectionOptions };
             },
           }),
         ]),
@@ -93,6 +100,7 @@ import { NotificationModule } from "./notification/notification.module";
     ScoringModule,
     ReportModule,
     NotificationModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

@@ -1,0 +1,48 @@
+# Render Blueprint for the SlopShield AI backend (apps/api).
+# Provisions a Render Free Web Service that runs the NestJS API and the
+# in-process BullMQ scan worker. Build runs from the monorepo root so the
+# pnpm workspace dependencies (@slopshield/shared, @slopshield/scanner-plugins)
+# resolve. Secrets are declared with `sync: false` and supplied in the Render
+# dashboard so no credential values are committed.
+services:
+  - type: web
+    name: slopshield-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .                     # build from monorepo root so pnpm workspaces resolve
+    healthCheckPath: /api/health
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @slopshield/api... build      # builds @slopshield/shared + scanner-plugins first (Turbo ^build)
+      pnpm --filter @slopshield/api exec prisma generate
+    preDeployCommand: pnpm --filter @slopshield/api exec prisma migrate deploy
+    startCommand: node apps/api/dist/main.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: LARK_APP_ID
+        sync: false
+      - key: LARK_APP_SECRET
+        sync: false
+      - key: LARK_WEBHOOK_VERIFICATION_TOKEN
+        sync: false
+      - key: LARK_DEFAULT_CHAT_ID
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: ANALYZER_TIMEOUT_MS
+        value: "45000"
+      - key: MAX_ANALYZE_FILES
+        value: "50"
