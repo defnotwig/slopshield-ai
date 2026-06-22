@@ -2,6 +2,8 @@ import React from "react";
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 import { LayoutShell } from "@/components/layout-shell";
+import { MockModeBanner } from "@/components/mock-mode-banner";
+import { config } from "@/lib/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,6 +34,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-cyan-500/30">
         <Providers>
+          {config.isMock && <MockModeBanner />}
           <LayoutShell>{children}</LayoutShell>
         </Providers>
       </body>

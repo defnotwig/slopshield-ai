@@ -1,16 +1,19 @@
 /**
  * SlopShield AI — Typed HTTP API Client
  *
- * Every method attaches the auth token from localStorage (if present)
- * and throws `ApiError` on non-2xx responses so TanStack Query can
- * handle retries and error states automatically.
+ * Public surface (`apiClient.get/post/patch/delete` and `ApiError`) is
+ * unchanged so existing TanStack Query hooks need no edits.
+ *
+ * In mock mode the client short-circuits to the in-memory mock store via
+ * `resolveMock` and never touches the network. In live mode it keeps the
+ * original `fetch`-based behavior: it asserts a valid config first, reads the
+ * base URL from `config.apiUrl`, attaches the bearer token from browser
+ * storage when present, treats `204` as `undefined`, and throws `ApiError`
+ * on non-OK responses.
  */
 
-const BASE_URL: string =
-  typeof window !== "undefined" &&
-  (process.env.NEXT_PUBLIC_API_URL ?? "").length > 0
-    ? process.env.NEXT_PUBLIC_API_URL!
-    : "http://localhost:3001/api";
+import { config, assertLiveConfig } from "./config";
+import { resolveMock } from "./mock-resolver";
 
 /** Structured error thrown by the API client on non-2xx responses. */
 export class ApiError extends Error {
@@ -26,37 +29,54 @@ export class ApiError extends Error {
 
 /* ------------------------------------------------------------------ */
 
+/** Mimic network latency so loading skeletons render in demo mode. */
+function delay(ms = 150): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function request<T>(
   method: string,
   path: string,
   body?: unknown,
 ): Promise<T> {
+  // ---- Mock mode: never hit the network ----
+  if (config.isMock) {
+    await delay();
+    return resolveMock<T>(method, path, body);
+  }
+
+  // ---- Live mode: surface a clear config error before fetching ----
+  assertLiveConfig(); // throws if API_URL missing
+
   const headers: Record<string, string> = {};
-  const isFormData = typeof window !== "undefined" && body instanceof FormData;
+  const isFormData =
+    typeof globalThis.window !== "undefined" && body instanceof FormData;
 
   if (!isFormData) {
     headers["Content-Type"] = "application/json";
   }
 
-  if (typeof window !== "undefined") {
+  if (typeof globalThis.window !== "undefined") {
     const token = localStorage.getItem("slopshield_token");
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const serializedBody =
+    body === undefined
+      ? undefined
+      : isFormData
+        ? (body as BodyInit)
+        : JSON.stringify(body);
+
+  const res = await fetch(`${config.apiUrl}${path}`, {
     method,
     headers,
-    body:
-      body !== undefined
-        ? isFormData
-          ? (body as any)
-          : JSON.stringify(body)
-        : undefined,
+    body: serializedBody,
   });
 
-  /* Empty 204 / 201 responses with no body */
+  /* Empty 204 responses with no body */
   if (res.status === 204) return undefined as T;
 
   const json = await res.json().catch(() => null);
