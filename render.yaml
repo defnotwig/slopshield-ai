@@ -12,12 +12,16 @@ services:
     region: oregon
     rootDir: .                     # build from monorepo root so pnpm workspaces resolve
     healthCheckPath: /api/health
+    # Install pnpm via npm (not corepack): Node 20.18.0's bundled corepack has
+    # stale signing keys and fails to verify pnpm's signature on Render.
+    # Migrations run in the build step here because Render Free does not support
+    # preDeployCommand; `migrate deploy` is a no-op when already in sync.
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@9.15.0
       pnpm install --frozen-lockfile
       pnpm --filter @slopshield/api... build      # builds @slopshield/shared + scanner-plugins first (Turbo ^build)
       pnpm --filter @slopshield/api exec prisma generate
-    preDeployCommand: pnpm --filter @slopshield/api exec prisma migrate deploy
+      pnpm --filter @slopshield/api exec prisma migrate deploy
     startCommand: node apps/api/dist/main.js
     envVars:
       - key: NODE_VERSION
