@@ -153,7 +153,37 @@ export class ScanService {
       if (fs.existsSync(scanDir)) {
         fs.rmSync(scanDir, { recursive: true, force: true });
       }
+      // Map ingestion failures to meaningful HTTP statuses instead of a bare
+      // 500. Client-correctable problems (bad repo, private without a token)
+      // become 4xx; transient transport/size problems become 400 so the user
+      // can retry or pick a smaller repo.
+      if (err instanceof GitHubIngestionError) {
+        throw this.toHttpException(err);
+      }
       throw err;
+    }
+  }
+
+  /** Translate a {@link GitHubIngestionError} into the right HTTP exception. */
+  private toHttpException(
+    err: GitHubIngestionError,
+  ): NotFoundException | BadRequestException {
+    switch (err.kind) {
+      case "not-found":
+        return new NotFoundException(err.message);
+      case "private-no-token":
+        // No public access and no token configured — treat as not found so we
+        // do not leak whether a private repo exists.
+        return new NotFoundException(err.message);
+      case "invalid-url":
+      case "not-a-repo-url":
+      case "invalid-ref":
+      case "too-large":
+      case "too-many-files":
+      case "timeout":
+      case "network-error":
+      default:
+        return new BadRequestException(err.message);
     }
   }
 

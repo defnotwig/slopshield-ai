@@ -82,6 +82,15 @@ async function request<T>(
   const json = await res.json().catch(() => null);
 
   if (!res.ok) {
+    // A 401 in live mode means the stored token is missing/expired/invalid.
+    // Clear it and bounce to the login page so the user re-authenticates,
+    // rather than surfacing a raw "Missing or invalid Authorization header".
+    if (res.status === 401 && typeof globalThis.window !== "undefined") {
+      localStorage.removeItem("slopshield_token");
+      if (!globalThis.window.location.pathname.startsWith("/auth/")) {
+        globalThis.window.location.assign("/auth/login");
+      }
+    }
     throw new ApiError(
       res.status,
       json?.message ?? res.statusText,
