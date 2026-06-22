@@ -38,7 +38,7 @@ export class ESLintAnalyzer implements StaticAnalyzer {
       // Dynamically load ESLint to prevent require errors at startup if it's missing
       const { ESLint } = require("eslint");
 
-            let eslintInstance: any;
+      let eslintInstance: any;
       try {
         eslintInstance = new ESLint({
           cwd: context.scanDir,
