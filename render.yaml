@@ -14,11 +14,13 @@ services:
     healthCheckPath: /api/health
     # Install pnpm via npm (not corepack): Node 20.18.0's bundled corepack has
     # stale signing keys and fails to verify pnpm's signature on Render.
+    # --prod=false forces devDependencies (prisma, nest CLI, typescript) to be
+    # installed even though NODE_ENV=production, so the build can run.
     # Migrations run in the build step here because Render Free does not support
     # preDeployCommand; `migrate deploy` is a no-op when already in sync.
     buildCommand: |
       npm install -g pnpm@9.15.0
-      pnpm install --frozen-lockfile
+      pnpm install --frozen-lockfile --prod=false
       pnpm --filter @slopshield/api... build      # builds @slopshield/shared + scanner-plugins first (Turbo ^build)
       pnpm --filter @slopshield/api exec prisma generate
       pnpm --filter @slopshield/api exec prisma migrate deploy
