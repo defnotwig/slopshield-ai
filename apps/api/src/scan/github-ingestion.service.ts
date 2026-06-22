@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGunzip } from "node:zlib";
@@ -118,7 +118,11 @@ export class GitHubIngestionService {
     ".bin",
   ]);
 
-  constructor(config?: GitHubIngestionConfig) {
+  // `GitHubIngestionConfig` is a plain type, not a Nest provider. Mark the
+  // parameter @Optional() so Nest injects `undefined` (rather than trying to
+  // resolve an unregistered "Object" token and crashing at startup); the
+  // constructor then falls back to loading config from the environment.
+  constructor(@Optional() config?: GitHubIngestionConfig) {
     this.config = config ?? loadGitHubIngestionConfig();
   }
 
