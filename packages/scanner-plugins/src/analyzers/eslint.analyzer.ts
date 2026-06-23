@@ -5,6 +5,22 @@ import {
   AnalysisResult,
 } from "../interfaces/static-analyzer.interface.js";
 
+/**
+ * Baseline lint rules applied to every scanned repository. These are bundled
+ * with the analyzer and are used regardless of the scanned repository's own
+ * ESLint configuration (Req 5.3) so that coverage is consistent and cannot be
+ * weakened by a repo that disables our security/quality rules.
+ */
+const BASELINE_RULES: Record<string, unknown> = {
+  "no-eval": "error",
+  "no-implied-eval": "error",
+  "no-new-func": "error",
+  "no-console": "warn",
+  "no-debugger": "error",
+  "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+  eqeqeq: ["warn", "always"],
+};
+
 export class ESLintAnalyzer implements StaticAnalyzer {
   public readonly name = "eslint";
   public readonly description =
@@ -18,6 +34,55 @@ export class ESLintAnalyzer implements StaticAnalyzer {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Builds an ESLint instance that ALWAYS uses the bundled baseline config and
+   * never the scanned repository's configuration (Req 5.3). Supports both the
+   * flat-config API (ESLint v9: `overrideConfigFile: true`) and the legacy
+   * eslintrc API (ESLint v8: `useEslintrc: false`); in both cases the repo's
+   * own config files are ignored.
+   */
+  private createBundledEslint(ESLint: any, scanDir: string): any {
+    const version: string = String(ESLint.version ?? "");
+    const major = Number.parseInt(version.split(".")[0], 10);
+
+    if (Number.isFinite(major) && major >= 9) {
+      // Flat config (ESLint v9+). `overrideConfigFile: true` disables lookup of
+      // any repo eslint.config.* file, guaranteeing the bundled config is used.
+      return new ESLint({
+        cwd: scanDir,
+        overrideConfigFile: true,
+        overrideConfig: [
+          {
+            languageOptions: {
+              ecmaVersion: "latest",
+              sourceType: "module",
+            },
+            rules: BASELINE_RULES,
+          },
+        ],
+      });
+    }
+
+    // Legacy eslintrc (ESLint v8 and below). `useEslintrc: false` disables
+    // discovery of repo .eslintrc* files, guaranteeing the bundled config.
+    return new ESLint({
+      cwd: scanDir,
+      useEslintrc: false,
+      overrideConfig: {
+        env: {
+          node: true,
+          browser: true,
+          es2021: true,
+        },
+        parserOptions: {
+          ecmaVersion: "latest",
+          sourceType: "module",
+        },
+        rules: BASELINE_RULES,
+      },
+    });
   }
 
   public async analyze(context: AnalysisContext): Promise<AnalysisResult> {
@@ -38,50 +103,7 @@ export class ESLintAnalyzer implements StaticAnalyzer {
       // Dynamically load ESLint to prevent require errors at startup if it's missing
       const { ESLint } = require("eslint");
 
-      let eslintInstance: any;
-      try {
-        eslintInstance = new ESLint({
-          cwd: context.scanDir,
-          useEslintrc: true,
-          overrideConfig: {
-            env: {
-              node: true,
-              browser: true,
-              es2021: true,
-            },
-            rules: {
-              "no-eval": "error",
-              "no-implied-eval": "error",
-              "no-new-func": "error",
-              "no-console": "warn",
-              "no-debugger": "error",
-              "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-              eqeqeq: ["warn", "always"],
-            },
-          },
-        });
-      } catch (err: any) {
-        eslintInstance = new ESLint({
-          cwd: context.scanDir,
-          overrideConfig: [
-            {
-              languageOptions: {
-                ecmaVersion: "latest",
-                sourceType: "module",
-              },
-              rules: {
-                "no-eval": "error",
-                "no-implied-eval": "error",
-                "no-new-func": "error",
-                "no-console": "warn",
-                "no-debugger": "error",
-                "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-                eqeqeq: ["warn", "always"],
-              },
-            },
-          ],
-        });
-      }
+      const eslintInstance = this.createBundledEslint(ESLint, context.scanDir);
 
       const results = await eslintInstance.lintFiles(
         context.files.map((file) => `${context.scanDir}/${file}`),

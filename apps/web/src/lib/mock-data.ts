@@ -22,9 +22,11 @@ import type {
   ScanScore,
   LarkScanSummary,
   Rule,
-  FindingCategory,
-  FindingSeverity,
   ScanStatusResult,
+  DashboardSummary,
+  DashboardTrendPoint,
+  TopIssue,
+  StandardViolation,
 } from "@slopshield/shared";
 
 // ---------------------------------------------------------------------------
@@ -39,36 +41,10 @@ export interface PaginatedScans {
   total: number;
 }
 
-/** GET /dashboard/summary */
-export interface DashboardSummary {
-  totalScans: number;
-  averageScore: number; // 0–100
-  blockedCount: number;
-  openFindings: number;
-  scansByVerdict: Record<string, number>; // keyed by ScanStatusResult
-}
-
-/** GET /dashboard/trends — one point per day. */
-export interface DashboardTrendPoint {
-  date: string; // ISO date
-  averageScore: number; // 0–100
-  scanCount: number;
-}
-
-/** GET /dashboard/top-issues */
-export interface TopIssue {
-  title: string;
-  category: FindingCategory; // from shared
-  severity: FindingSeverity; // from shared
-  count: number;
-}
-
-/** GET /dashboard/standards */
-export interface StandardCompliance {
-  standard: string; // e.g. "OWASP A01:2021"
-  passed: number;
-  failed: number;
-}
+// Dashboard payload shapes (`DashboardSummary`, `DashboardTrendPoint`,
+// `TopIssue`, `StandardViolation`) are sourced directly from `@slopshield/shared`
+// so the mock data, the API responses, and the Web_App all conform to the same
+// contract (Req 8.1–8.3, resolves audit finding A2).
 
 /** GET /projects */
 export interface Project {
@@ -556,11 +532,6 @@ const completedScansWithScore = mockScanJobs.filter(
     typeof s.overallScore === "number",
 );
 
-const totalOpenFindings = Object.values(mockFindingsByScanId).reduce(
-  (sum, findings) => sum + findings.length,
-  0,
-);
-
 const verdictCounts = mockScanJobs.reduce<Record<string, number>>(
   (acc, scan) => {
     if (scan.statusResult) {
@@ -582,48 +553,46 @@ const averageOverallScore =
 export const mockDashboardSummary: DashboardSummary = {
   totalScans: mockScanJobs.length,
   averageScore: averageOverallScore,
-  blockedCount: verdictCounts["blocked" satisfies ScanStatusResult] ?? 0,
-  openFindings: totalOpenFindings,
-  scansByVerdict: verdictCounts,
+  blockedScans: verdictCounts["blocked" satisfies ScanStatusResult] ?? 0,
+  passedScans:
+    (verdictCounts["passed" satisfies ScanStatusResult] ?? 0) +
+    (verdictCounts["passed-with-warnings" satisfies ScanStatusResult] ?? 0),
+  warningScans:
+    verdictCounts["needs-cleanup" satisfies ScanStatusResult] ?? 0,
 };
 
 export const mockDashboardTrends: DashboardTrendPoint[] = [
-  { date: "2024-01-15", averageScore: 92, scanCount: 1 },
-  { date: "2024-01-16", averageScore: 68, scanCount: 1 },
-  { date: "2024-01-17", averageScore: 41, scanCount: 1 },
-  { date: "2024-01-18", averageScore: 0, scanCount: 2 },
+  { scanId: SCAN_1, date: "2024-01-15", score: 92 },
+  { scanId: SCAN_2, date: "2024-01-16", score: 68 },
+  { scanId: SCAN_3, date: "2024-01-17", score: 41 },
 ];
 
 export const mockDashboardTopIssues: TopIssue[] = [
   {
     title: "Unsafe HTML injection",
     category: "frontend-security",
-    severity: "high",
     count: 1,
   },
   {
     title: "Hardcoded secret committed to source",
     category: "backend-security",
-    severity: "critical",
     count: 1,
   },
   {
     title: "Excessive cyclomatic complexity",
     category: "maintainability",
-    severity: "medium",
     count: 1,
   },
   {
     title: "Missing JSDoc on public API",
     category: "documentation",
-    severity: "info",
     count: 1,
   },
 ];
 
-export const mockDashboardStandards: StandardCompliance[] = [
-  { standard: "OWASP A01:2021", passed: 8, failed: 1 },
-  { standard: "OWASP A03:2021", passed: 5, failed: 2 },
-  { standard: "OWASP A07:2021", passed: 6, failed: 1 },
-  { standard: "CWE-79", passed: 4, failed: 1 },
+export const mockDashboardStandards: StandardViolation[] = [
+  { standard: "OWASP A01:2021", count: 1 },
+  { standard: "OWASP A03:2021", count: 2 },
+  { standard: "OWASP A07:2021", count: 1 },
+  { standard: "CWE-79", count: 1 },
 ];

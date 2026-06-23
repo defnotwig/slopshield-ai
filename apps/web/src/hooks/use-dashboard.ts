@@ -1,4 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import type {
+  DashboardSummary,
+  DashboardTrendPoint,
+  TopIssue,
+  StandardViolation,
+} from "@slopshield/shared";
 import { apiClient } from "@/lib/api-client";
 
 export function useDashboardSummary(projectId?: string) {
@@ -8,7 +14,7 @@ export function useDashboardSummary(projectId?: string) {
       const path = projectId
         ? `/dashboard/summary?projectId=${projectId}`
         : "/dashboard/summary";
-      return apiClient.get<any>(path);
+      return apiClient.get<DashboardSummary>(path);
     },
   });
 }
@@ -20,7 +26,7 @@ export function useDashboardTrends(projectId?: string) {
       const path = projectId
         ? `/dashboard/trends?projectId=${projectId}`
         : "/dashboard/trends";
-      return apiClient.get<any[]>(path);
+      return apiClient.get<DashboardTrendPoint[]>(path);
     },
   });
 }
@@ -32,7 +38,7 @@ export function useDashboardTopIssues(projectId?: string) {
       const path = projectId
         ? `/dashboard/top-issues?projectId=${projectId}`
         : "/dashboard/top-issues";
-      return apiClient.get<any[]>(path);
+      return apiClient.get<TopIssue[]>(path);
     },
   });
 }
@@ -44,7 +50,7 @@ export function useDashboardStandards(projectId?: string) {
       const path = projectId
         ? `/dashboard/standards?projectId=${projectId}`
         : "/dashboard/standards";
-      return apiClient.get<any[]>(path);
+      return apiClient.get<StandardViolation[]>(path);
     },
   });
 }

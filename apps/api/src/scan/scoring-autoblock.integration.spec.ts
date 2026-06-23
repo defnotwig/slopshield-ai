@@ -59,7 +59,7 @@ describe("scoring auto-block integration (hardcoded secret => blocked)", () => {
     const orchestrator = new ScannerOrchestrator();
     await orchestrator.onModuleInit();
 
-    const rawFindings = await orchestrator.runAll({
+    const { findings: rawFindings } = await orchestrator.runAll({
       scanDir,
       files: ["src/secrets.ts"],
       scanId: "it-2",

@@ -57,6 +57,13 @@ export default function ScanReportPage() {
         <p className="text-xs text-gray-500">
           Verify network connection or DB schema initialization.
         </p>
+        <button
+          onClick={() => refetch()}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Retry
+        </button>
       </div>
     );
   }
@@ -193,8 +200,11 @@ export default function ScanReportPage() {
       {/* Score Hero Section */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Radial Gauge */}
-        <div className="border border-border bg-card p-8 rounded-sm flex flex-col items-center justify-center min-h-[250px]">
+        <div className="border border-border bg-card p-8 rounded-sm flex flex-col items-center justify-center gap-4 min-h-[250px]">
           <ScoreGauge score={scan.overallScore ?? 0} size={190} />
+          {(scan.statusResult || scan.status) && (
+            <StatusBadge status={scan.statusResult || scan.status} />
+          )}
         </div>
 
         {/* AI Executive Summary Card */}

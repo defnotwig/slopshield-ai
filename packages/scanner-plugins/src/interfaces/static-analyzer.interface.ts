@@ -14,6 +14,13 @@ export interface AnalysisResult {
   analyzerName: string;
   /** Whether the analyzer ran successfully */
   success: boolean;
+  /**
+   * Whether the analyzer deliberately skipped (e.g. an optional external tool
+   * or its rule registry is unavailable). A skipped analyzer must not fail the
+   * scan; the orchestrator records it with an Analyzer_Status of `skipped`
+   * rather than `failed` (Req 5.7).
+   */
+  skipped?: boolean;
   /** Normalized findings */
   findings: Omit<Finding, "id" | "scanId">[];
   /** Error message if the analyzer failed */

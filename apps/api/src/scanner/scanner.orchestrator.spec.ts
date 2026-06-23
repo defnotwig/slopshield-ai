@@ -140,7 +140,7 @@ describe("ScannerOrchestrator.runAll — Property 4: Analyzer timeout/failure de
             await jest.advanceTimersByTimeAsync(ANALYZER_TIMEOUT_MS + 100);
 
             // runAll must resolve, never reject.
-            const findings = await runPromise;
+            const { findings, coverage } = await runPromise;
 
             // Expected = union of findings from fast-succeeding analyzers, in
             // their original registration order. Hung/throwing/unavailable
@@ -151,6 +151,20 @@ describe("ScannerOrchestrator.runAll — Property 4: Analyzer timeout/failure de
 
             expect(Array.isArray(findings)).toBe(true);
             expect(findings).toEqual(expected);
+
+            // Coverage must record one entry per analyzer (ran/failed/skipped),
+            // so total coverage records equals the number of analyzers.
+            expect(coverage.length).toBe(specs.length);
+            const ranCount = coverage.filter((c) => c.status === "ran").length;
+            const skippedCount = coverage.filter(
+              (c) => c.status === "skipped",
+            ).length;
+            expect(ranCount).toBe(
+              specs.filter((s) => s.kind === "success").length,
+            );
+            expect(skippedCount).toBe(
+              specs.filter((s) => s.kind === "unavailable").length,
+            );
           },
         ),
         { numRuns: 100 },

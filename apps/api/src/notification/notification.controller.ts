@@ -11,11 +11,16 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { NotificationService } from "./notification.service.js";
+import { AuditService, AUDIT_ACTION } from "../audit/audit.service.js";
+import { extractIp } from "../common/request-ip.js";
 
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get("users/notifications")
   public async getSettings(@Req() req: any): Promise<any> {
@@ -41,12 +46,21 @@ export class NotificationController {
   public async addMember(
     @Param("projectId") projectId: string,
     @Body() body: { email: string; role?: string },
+    @Req() req: any,
   ): Promise<any> {
-    return this.notificationService.addProjectMember(
+    const member = await this.notificationService.addProjectMember(
       projectId,
       body.email,
       body.role || "member",
     );
+    await this.auditService.record({
+      actorId: req.user?.sub,
+      action: AUDIT_ACTION.USER_ROLE_CHANGE,
+      target: member?.userId ?? body.email,
+      ipAddress: extractIp(req),
+      metadata: { projectId, role: body.role || "member" },
+    });
+    return member;
   }
 
   @Delete("projects/:projectId/members/:memberId")

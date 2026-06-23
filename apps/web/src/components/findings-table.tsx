@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { SeverityBadge } from "@/components/severity-badge";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, ArrowDownUp } from "lucide-react";
 
 interface Finding {
   id: string;
@@ -28,6 +28,10 @@ export function FindingsTable({
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"severity" | "category" | "title">(
+    "severity",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const severities = ["all", "critical", "high", "medium", "low", "info"];
   const categories = [
@@ -39,6 +43,15 @@ export function FindingsTable({
     "frontend",
     "backend",
   ];
+
+  // Severity ranking so "desc" surfaces the most serious findings first.
+  const severityRank: Record<string, number> = {
+    critical: 5,
+    high: 4,
+    medium: 3,
+    low: 2,
+    info: 1,
+  };
 
   // Filtering logic
   const filteredFindings = findings.filter((f) => {
@@ -54,6 +67,25 @@ export function FindingsTable({
 
     return matchesSeverity && matchesCategory && matchesSearch;
   });
+
+  // Sorting logic applied to the real (filtered) findings.
+  const sortedFindings = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filteredFindings].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "severity") {
+        cmp =
+          (severityRank[a.severity.toLowerCase()] ?? 0) -
+          (severityRank[b.severity.toLowerCase()] ?? 0);
+      } else if (sortBy === "category") {
+        cmp = a.category.localeCompare(b.category);
+      } else {
+        cmp = a.title.localeCompare(b.title);
+      }
+      return cmp * dir;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredFindings, sortBy, sortDir]);
 
   return (
     <div className="space-y-4">
@@ -106,6 +138,40 @@ export function FindingsTable({
               ))}
             </select>
           </div>
+
+          {/* Sort Control */}
+          <div className="flex flex-col w-full sm:w-auto">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+              Sort By
+            </span>
+            <div className="flex items-center gap-1.5">
+              <select
+                aria-label="Sort findings by"
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value as "severity" | "category" | "title",
+                  )
+                }
+                className="px-3 py-1.5 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring capitalize"
+              >
+                <option value="severity">Severity</option>
+                <option value="category">Category</option>
+                <option value="title">Title</option>
+              </select>
+              <button
+                type="button"
+                aria-label={`Toggle sort direction (currently ${sortDir})`}
+                onClick={() =>
+                  setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+                }
+                className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-bold rounded-sm border border-border bg-muted/40 text-foreground hover:bg-foreground hover:text-background transition-colors uppercase"
+              >
+                <ArrowDownUp className="w-3.5 h-3.5" />
+                {sortDir}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -134,7 +200,7 @@ export function FindingsTable({
                   </td>
                 </tr>
               ) : (
-                filteredFindings.map((finding) => (
+                sortedFindings.map((finding) => (
                   <tr
                     key={finding.id}
                     className="hover:bg-muted/30 transition-colors"

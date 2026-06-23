@@ -47,3 +47,8 @@ jobs:
 
       - name: Run lints
         run: pnpm lint
+
+      - name: Run tests
+        # Web_App tests run in non-watch single-run mode via `vitest run`
+        # (the @slopshield/web `test` script), so CI never hangs (Req 12.2, C3).
+        run: pnpm test

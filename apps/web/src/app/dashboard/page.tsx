@@ -87,8 +87,8 @@ export default function DashboardPage() {
     {
       name: "Average Quality Score",
       value:
-        summary?.averageScore !== null
-          ? `${Math.round(summary?.averageScore)}/100`
+        summary && typeof summary.averageScore === "number"
+          ? `${Math.round(summary.averageScore)}/100`
           : "N/A",
       desc: "Average codebase score",
       icon: Award,

@@ -1,0 +1,97 @@
+﻿node.exe : ts-jest[config] (WARN) 
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ts-jes 
+   t[config] (WARN) :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    The "ts-jest" config option "isolatedModules" 
+is deprecated and will be removed in v30.0.0. 
+Please use "isolatedModules: true" in 
+C:/Users/Ludwig Rivera/.gemini/antigravity/scratch/s
+lopshield-ai/apps/api/tsconfig.json instead, see htt
+ps://www.typescriptlang.org/tsconfig/#isolatedModule
+s
+  
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: repo-full-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: repo-fast-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: repo-security-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: repo-frontend-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: repo-backend-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mRerunning scan original as new scan rerun-full-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: rerun-full-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mRerunning scan original as new scan rerun-fast-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: rerun-fast-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mRerunning scan original as new scan rerun-security-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: rerun-security-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mRerunning scan original as new scan rerun-frontend-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: rerun-frontend-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mRerunning scan original as new scan rerun-backend-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: rerun-backend-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: paste-fe-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: paste-full-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: paste-fast-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: paste-security-only-0[39m
+[32m[Nest] 29952  - [39m06/23/2026, 9:38:16 AM [32m    LOG[39m [38;5;3m[ScanService] [39m[32mEnqueued scan job: paste-backend-only-0[39m
+PASS src/scan/scan-mode-scoping.spec.ts (8.928 s)
+  Scan-mode scoping (Req 4.4)
+    repository scans persist and propagate the 
+selected mode
+      ΓêÜ accepts scanMode 'full' and records it on 
+the ScanJob (26 ms)
+      ΓêÜ accepts scanMode 'fast' and records it on 
+the ScanJob (5 ms)
+      ΓêÜ accepts scanMode 'security-only' and 
+records it on the ScanJob (6 ms)
+      ΓêÜ accepts scanMode 'frontend-only' and 
+records it on the ScanJob (4 ms)
+      ΓêÜ accepts scanMode 'backend-only' and 
+records it on the ScanJob (3 ms)
+    rerun preserves the original scan's mode (Req 
+4.4)
+      ΓêÜ re-runs a 'full' scan with the same mode 
+(5 ms)
+      ΓêÜ re-runs a 'fast' scan with the same mode 
+(4 ms)
+      ΓêÜ re-runs a 'security-only' scan with the 
+same mode (4 ms)
+      ΓêÜ re-runs a 'frontend-only' scan with the 
+same mode (6 ms)
+      ΓêÜ re-runs a 'backend-only' scan with the 
+same mode (3 ms)
+    paste scans scope the written source file type 
+by mode
+      ΓêÜ writes a .tsx file for frontend-only mode 
+(6 ms)
+      ΓêÜ writes a .ts file for non-frontend mode 
+'full' (6 ms)
+      ΓêÜ writes a .ts file for non-frontend mode 
+'fast' (6 ms)
+      ΓêÜ writes a .ts file for non-frontend mode 
+'security-only' (6 ms)
+      ΓêÜ writes a .ts file for non-frontend mode 
+'backend-only' (5 ms)
+  Ingestion executes no repository code (Req 4.9)
+    structural: ingestion source references no 
+code-execution primitives
+      ΓêÜ 'github-ingestion.service.ts' contains no 
+shell/eval/vm execution APIs (3 ms)
+      ΓêÜ 'scan.service.ts' contains no 
+shell/eval/vm execution APIs (3 ms)
+      ΓêÜ 'scan.processor.ts' contains no 
+shell/eval/vm execution APIs (2 ms)
+    functional: safeExtract writes hostile files 
+without running them
+      ΓêÜ never executes a repository's lifecycle 
+scripts during extraction (106 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       19 passed, 19 total
+Snapshots:   0 total
+Time:        10.723 s, estimated 11 s
+Ran all test suites matching 
+/src\\scan\\scan-mode-scoping.spec.ts/i.
+Force exiting Jest: Have you considered using 
+`--detectOpenHandles` to detect async operations 
+that kept running after all tests finished?

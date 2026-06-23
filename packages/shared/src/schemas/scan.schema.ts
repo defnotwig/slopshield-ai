@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FindingSourceEnum } from "./finding.schema.js";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -68,6 +69,19 @@ export const SourceTypeEnum = z.enum([
 
 /** TypeScript union type for source types. */
 export type SourceType = z.infer<typeof SourceTypeEnum>;
+
+/**
+ * Shared source-type constant so the literal string is never free-typed at
+ * call sites. Keys are referenced throughout the app (e.g. `SOURCE_TYPE.REPOSITORY`)
+ * and `satisfies Record<string, SourceType>` guarantees the values stay in sync
+ * with {@link SourceTypeEnum}.
+ */
+export const SOURCE_TYPE = {
+  PASTE: "paste",
+  UPLOAD: "upload",
+  REPOSITORY: "repository",
+  DEMO_SAMPLE: "demo-sample",
+} as const satisfies Record<string, SourceType>;
 
 /**
  * What initiated the scan.
@@ -195,3 +209,42 @@ export const ScanJobSchema = z.object({
 
 /** Fully-typed scan job record. */
 export type ScanJob = z.infer<typeof ScanJobSchema>;
+
+// ---------------------------------------------------------------------------
+// Analyzer coverage contract
+// ---------------------------------------------------------------------------
+
+/**
+ * Outcome of a single analyzer pass during a scan.
+ * - `ran`: the analyzer executed to completion.
+ * - `skipped`: the analyzer was not available / intentionally not run.
+ * - `failed`: the analyzer threw, timed out, or returned an unsuccessful result.
+ */
+export const AnalyzerStatusEnum = z.enum(["ran", "skipped", "failed"]);
+
+/** TypeScript union type for analyzer execution status. */
+export type AnalyzerStatus = z.infer<typeof AnalyzerStatusEnum>;
+
+/**
+ * Per-analyzer coverage record persisted on a scan job so the API can report
+ * which analyzers ran, how long they took, and why any were skipped or failed.
+ */
+export const AnalyzerCoverageSchema = z.object({
+  /** Which scanner / analysis pass this coverage record describes. */
+  analyzer: FindingSourceEnum,
+
+  /** Execution outcome for this analyzer. */
+  status: AnalyzerStatusEnum,
+
+  /** Number of findings produced by this analyzer. */
+  findingCount: z.number().int().min(0),
+
+  /** Wall-clock duration of the analyzer pass, in milliseconds. */
+  durationMs: z.number().int().min(0),
+
+  /** Optional explanation for why the analyzer was skipped or failed. */
+  reason: z.string().optional(),
+});
+
+/** Typed per-analyzer coverage record. */
+export type AnalyzerCoverage = z.infer<typeof AnalyzerCoverageSchema>;

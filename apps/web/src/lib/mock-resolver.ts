@@ -231,7 +231,15 @@ export function resolveMock<T>(
   }
 
   // Mutations we don't model yet succeed as no-ops so demo flows don't crash.
-  if (method !== "GET") return undefined as T;
+  // Surface them via a console warning so silent no-ops are visible during
+  // development (Req 2.6, resolves C2).
+  if (method !== "GET") {
+    console.warn(
+      `[mock-resolver] Unmodeled mutation no-op: ${method} ${pathname}. ` +
+        `Returning undefined; no mock route handles this request.`,
+    );
+    return undefined as T;
+  }
 
   throw new ApiError(404, `No mock route for ${method} ${pathname}`);
 }

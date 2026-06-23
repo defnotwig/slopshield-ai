@@ -28,6 +28,7 @@
     "@nestjs/event-emitter": "^2.1.0",
     "@nestjs/platform-express": "^10.4.0",
     "@nestjs/platform-socket.io": "^10.4.0",
+    "@nestjs/throttler": "^6.0.0",
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^6.0.0",
     "@slopshield/scanner-plugins": "workspace:*",

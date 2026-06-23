@@ -36,6 +36,163 @@ describe("ScanProcessor guardrails", () => {
     });
   });
 
+  describe("Lark failure never blocks scan completion — Requirement 9.6", () => {
+    const SCAN_ID = "scan-lark-crash";
+    let scanDir: string;
+
+    let prisma: any;
+    let gateway: any;
+    let orchestrator: any;
+    let aiReviewer: any;
+    let scoringService: any;
+    let reportService: any;
+    let larkService: any;
+    let notificationService: any;
+
+    const buildProcessor = () =>
+      new ScanProcessor(
+        prisma,
+        gateway,
+        orchestrator,
+        aiReviewer,
+        scoringService,
+        reportService,
+        larkService,
+        notificationService,
+        { emit: jest.fn() } as any,
+      );
+
+    const buildJob = (): Job<any, any, string> =>
+      ({ data: { scanId: SCAN_ID, scanDir } }) as Job<any, any, string>;
+
+    beforeEach(() => {
+      scanDir = fs.mkdtempSync(path.join(os.tmpdir(), "scan-lark-"));
+      fs.mkdirSync(path.join(scanDir, "src"));
+      fs.writeFileSync(
+        path.join(scanDir, "src", "index.ts"),
+        "export const x = 1;\n",
+        "utf8",
+      );
+
+      prisma = {
+        scanFile: { createMany: jest.fn().mockResolvedValue({}) },
+        finding: {
+          createMany: jest.fn().mockResolvedValue({}),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        scanJob: { update: jest.fn().mockResolvedValue({}) },
+      };
+      gateway = { broadcastProgress: jest.fn() };
+      orchestrator = {
+        runAll: jest.fn().mockResolvedValue({
+          findings: [],
+          coverage: [
+            {
+              analyzer: "eslint",
+              status: "ran",
+              findingCount: 0,
+              durationMs: 50,
+            },
+          ],
+        }),
+      };
+      aiReviewer = {
+        reviewCode: jest.fn().mockResolvedValue({
+          findings: [],
+          summary: "No issues.",
+          refactor_plan: [],
+          recommended_tests: [],
+        }),
+      };
+      scoringService = {
+        calculateScore: jest.fn().mockReturnValue({
+          overallScore: 95,
+          categoryScores: {
+            security: 95,
+            maintainability: 95,
+            architecture: 95,
+            testability: 95,
+            frontend: 95,
+            reliability: 95,
+          },
+          statusResult: "passed",
+        }),
+      };
+      reportService = {};
+      notificationService = {
+        processScanNotifications: jest.fn().mockResolvedValue(undefined),
+      };
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(scanDir)) {
+        fs.rmSync(scanDir, { recursive: true, force: true });
+      }
+      jest.clearAllMocks();
+    });
+
+    it("completes the scan when sendScanCard throws a network error", async () => {
+      larkService = {
+        sendScanCard: jest
+          .fn()
+          .mockRejectedValue(new Error("Network timeout")),
+      };
+      const processor = buildProcessor();
+
+      await processor.process(buildJob());
+
+      // Scan reached the completed stage despite Lark throwing.
+      const statusUpdates = prisma.scanJob.update.mock.calls.map(
+        (c: any[]) => c[0].data.status,
+      );
+      expect(statusUpdates).toContain("completed");
+      expect(statusUpdates).not.toContain("failed");
+    });
+
+    it("completes the scan when sendScanCard throws a TypeError", async () => {
+      larkService = {
+        sendScanCard: jest
+          .fn()
+          .mockRejectedValue(new TypeError("Cannot read properties of null")),
+      };
+      const processor = buildProcessor();
+
+      await processor.process(buildJob());
+
+      const statusUpdates = prisma.scanJob.update.mock.calls.map(
+        (c: any[]) => c[0].data.status,
+      );
+      expect(statusUpdates).toContain("completed");
+      expect(statusUpdates).not.toContain("failed");
+    });
+
+    it("completes the scan when sendScanCard resolves successfully", async () => {
+      larkService = { sendScanCard: jest.fn().mockResolvedValue(true) };
+      const processor = buildProcessor();
+
+      await processor.process(buildJob());
+
+      const statusUpdates = prisma.scanJob.update.mock.calls.map(
+        (c: any[]) => c[0].data.status,
+      );
+      expect(statusUpdates).toContain("completed");
+      expect(statusUpdates).not.toContain("failed");
+    });
+
+    it("completes the scan when sendScanCard resolves false (Lark skip/failure)", async () => {
+      larkService = { sendScanCard: jest.fn().mockResolvedValue(false) };
+      const processor = buildProcessor();
+
+      await processor.process(buildJob());
+
+      const statusUpdates = prisma.scanJob.update.mock.calls.map(
+        (c: any[]) => c[0].data.status,
+      );
+      expect(statusUpdates).toContain("completed");
+      expect(statusUpdates).not.toContain("failed");
+    });
+  });
+
   describe("AI-absent persistence — Requirement 8.6", () => {
     const SCAN_ID = "scan-ai-absent";
     let scanDir: string;
@@ -79,6 +236,7 @@ describe("ScanProcessor guardrails", () => {
         reportService,
         larkService,
         notificationService,
+        { emit: jest.fn() } as any,
       );
 
     const buildJob = (): Job<any, any, string> =>
@@ -107,7 +265,17 @@ describe("ScanProcessor guardrails", () => {
       };
       gateway = { broadcastProgress: jest.fn() };
       orchestrator = {
-        runAll: jest.fn().mockResolvedValue(staticFindings),
+        runAll: jest.fn().mockResolvedValue({
+          findings: staticFindings,
+          coverage: [
+            {
+              analyzer: "secret-scanner",
+              status: "ran",
+              findingCount: 1,
+              durationMs: 10,
+            },
+          ],
+        }),
       };
       // With no GEMINI_API_KEY, GeminiProvider runs in mock mode and yields an
       // empty review result; model that here.

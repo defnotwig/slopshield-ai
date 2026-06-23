@@ -1,11 +1,24 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+} from "@nestjs/common";
 import { FindingsService } from "./findings.service.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { AuditService, AUDIT_ACTION } from "../audit/audit.service.js";
+import { extractIp } from "../common/request-ip.js";
 
 @UseGuards(JwtAuthGuard)
 @Controller("findings")
 export class FindingsController {
-  constructor(private readonly findingsService: FindingsService) {}
+  constructor(
+    private readonly findingsService: FindingsService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get(":id")
   public async findOne(@Param("id") id: string): Promise<any> {
@@ -16,8 +29,20 @@ export class FindingsController {
   public async markAsFalsePositive(
     @Param("id") id: string,
     @Body("falsePositive") falsePositive: boolean,
+    @Req() req: any,
   ): Promise<any> {
-    return this.findingsService.markAsFalsePositive(id, falsePositive);
+    const result = await this.findingsService.markAsFalsePositive(
+      id,
+      falsePositive,
+    );
+    await this.auditService.record({
+      actorId: req.user?.sub,
+      action: AUDIT_ACTION.FINDING_FALSE_POSITIVE,
+      target: id,
+      ipAddress: extractIp(req),
+      metadata: { falsePositive },
+    });
+    return result;
   }
 
   @Post(":id/create-task")

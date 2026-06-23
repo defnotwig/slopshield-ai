@@ -4,6 +4,8 @@ import {
   FindingCategory,
   FindingSeverity,
   ScanScore,
+  ScanScoreSchema,
+  ScanStatusResult,
   CategoryScores,
   CATEGORY_WEIGHTS,
   SEVERITY_DEDUCTIONS,
@@ -118,13 +120,22 @@ export class ScoringService {
       );
     }
 
-    // Determine final status verdict based on overall score, but downgrade to 'blocked' if blockedReasons exist
-    let statusResult = getScoreStatus(overallScore);
-    if (blockedReasons.length > 0) {
-      statusResult = "blocked";
-    }
+    // Determine final status verdict.
+    //
+    // Auto-block takes absolute precedence (Req 7.3, 7.3a): if any persisted
+    // finding matched an AutoBlockCondition (or was flagged blocking), the
+    // verdict is "blocked" and the documented score bands are bypassed
+    // entirely — band assignment is never the source of the verdict when
+    // blocked. Only when there are no blocking reasons do we assign the
+    // verdict from the documented SCORE_THRESHOLDS bands (Req 7.2):
+    //   90–100 passed, 80–89 passed-with-warnings, 70–79 needs-cleanup,
+    //   60–69 risky, 0–59 blocked.
+    const statusResult: ScanStatusResult =
+      blockedReasons.length > 0 ? "blocked" : getScoreStatus(overallScore);
 
-    return {
+    // Validate the output against the shared score schema (Req 7.4) so the
+    // persisted/served payload is guaranteed to conform to ScanScoreSchema.
+    return ScanScoreSchema.parse({
       overallScore,
       categoryScores,
       statusResult,
@@ -135,6 +146,6 @@ export class ScoringService {
       mediumCount,
       lowCount,
       infoCount,
-    };
+    });
   }
 }

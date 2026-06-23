@@ -15,11 +15,148 @@ import {
   GitHubIngestionService,
   GitHubIngestionError,
 } from "./github-ingestion.service.js";
+import { loadGitHubIngestionConfig } from "./github-ingestion.config.js";
+
+/**
+ * A single normalized archive entry, abstracting over both GitHub tarball
+ * entries and uploaded-ZIP entries so they can share one extraction guard.
+ */
+export interface ArchiveEntry {
+  /** Entry path as declared inside the archive (may contain `../`, be absolute, use either separator). */
+  path: string;
+  /** Entry kind. Only `"file"` is written; links are rejected outright. */
+  type: "file" | "directory" | "symlink" | "link";
+  /** File contents (for `"file"` entries). */
+  data?: Buffer;
+  /** Declared/decompressed size in bytes, used for the cumulative max-bytes cap. */
+  size?: number;
+  /** Link target for `"symlink"`/`"link"` entries. */
+  linkname?: string;
+}
+
+/** Resource and safety limits enforced by {@link safeExtractArchive}. */
+export interface SafeExtractLimits {
+  /** Maximum number of regular files written. */
+  maxFileCount: number;
+  /** Maximum cumulative bytes written across all files. */
+  maxBytes: number;
+}
+
+/** Discriminated reasons {@link safeExtractArchive} fails the entire scan. */
+export type ArchiveExtractionErrorKind =
+  | "path-escape" // entry resolves outside the Scan_Directory (Req 4.8, 4.8a)
+  | "symlink" // symlink / hard-link entry (escape vector) rejected (Req 4.8a)
+  | "too-many-files" // exceeded maxFileCount (Req 4.6)
+  | "too-large"; // exceeded maxBytes (Req 4.6)
+
+/**
+ * Error thrown by {@link safeExtractArchive} when an archive entry violates a
+ * confinement or resource rule. Any such violation fails the entire scan
+ * immediately rather than skipping the offending entry (Req 4.8a).
+ */
+export class ArchiveExtractionError extends Error {
+  constructor(
+    public readonly kind: ArchiveExtractionErrorKind,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ArchiveExtractionError";
+  }
+}
+
+/** Result of a successful {@link safeExtractArchive} run. */
+export interface SafeExtractResult {
+  fileCount: number;
+  totalBytes: number;
+}
+
+/**
+ * Shared safe-extraction guard for archive entries (GitHub tarball or uploaded
+ * ZIP). For every entry it enforces, in order:
+ *
+ *  - **Symlink rejection** — symlink / hard-link entries are an escape vector
+ *    and fail the entire scan (Req 4.8a).
+ *  - **Path confinement** — the entry's resolved destination MUST stay within
+ *    `scanDir`; `../` sequences and absolute paths that escape fail the entire
+ *    scan immediately and the offending entry is never written (Req 4.8, 4.8a).
+ *  - **max-file-count / max-bytes** — cumulative caps that fail the scan when
+ *    exceeded (Req 4.6).
+ *
+ * Only regular `"file"` entries are written; directories are created implicitly.
+ * On any violation the function throws an {@link ArchiveExtractionError} and
+ * never writes the offending entry outside `scanDir`.
+ */
+export function safeExtractArchive(
+  entries: ArchiveEntry[],
+  scanDir: string,
+  limits: SafeExtractLimits,
+): SafeExtractResult {
+  const resolvedRoot = path.resolve(scanDir);
+  let fileCount = 0;
+  let totalBytes = 0;
+
+  for (const entry of entries) {
+    // 1) Reject links outright — a link could redirect a later write outside
+    //    scanDir, so treat any link entry as a fatal escape (Req 4.8a).
+    if (entry.type === "symlink" || entry.type === "link") {
+      throw new ArchiveExtractionError(
+        "symlink",
+        `Archive entry "${entry.path}" is a link, which is not allowed.`,
+      );
+    }
+
+    // 2) Path-confinement guard: the resolved destination must equal the root
+    //    or sit beneath "root + sep". Rejects "../" escapes and absolute paths.
+    const dest = path.resolve(resolvedRoot, entry.path);
+    const contained =
+      dest === resolvedRoot || dest.startsWith(resolvedRoot + path.sep);
+    if (!contained) {
+      throw new ArchiveExtractionError(
+        "path-escape",
+        `Archive entry "${entry.path}" resolves outside the scan directory.`,
+      );
+    }
+
+    if (entry.type !== "file") {
+      // Directories (and anything non-file/non-link) need no content write.
+      continue;
+    }
+
+    // 3) Resource caps (Req 4.6).
+    if (fileCount + 1 > limits.maxFileCount) {
+      throw new ArchiveExtractionError(
+        "too-many-files",
+        "Archive exceeds the maximum allowed file count.",
+      );
+    }
+    const size = entry.size ?? entry.data?.length ?? 0;
+    if (totalBytes + size > limits.maxBytes) {
+      throw new ArchiveExtractionError(
+        "too-large",
+        "Archive exceeds the maximum allowed total size.",
+      );
+    }
+
+    // 4) Confinement verified — safe to write.
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, entry.data ?? Buffer.alloc(0));
+    fileCount += 1;
+    totalBytes += size;
+  }
+
+  return { fileCount, totalBytes };
+}
 
 @Injectable()
 export class ScanService {
   private readonly logger = new Logger(ScanService.name);
   private readonly tempBaseDir: string;
+  /**
+   * Resource limits applied when extracting an uploaded ZIP through
+   * {@link safeExtractArchive}. Sourced from the same environment-backed
+   * ingestion config as the GitHub tarball path so both share one set of caps.
+   */
+  private readonly extractLimits: SafeExtractLimits;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -30,6 +167,11 @@ export class ScanService {
     if (!fs.existsSync(this.tempBaseDir)) {
       fs.mkdirSync(this.tempBaseDir, { recursive: true });
     }
+    const ingestionConfig = loadGitHubIngestionConfig();
+    this.extractLimits = {
+      maxFileCount: ingestionConfig.maxFileCount,
+      maxBytes: ingestionConfig.maxRepoBytes,
+    };
   }
 
   public async createScan(
@@ -92,6 +234,72 @@ export class ScanService {
       },
     });
 
+    return this.prepareAndEnqueue(scanJob, input, file);
+  }
+
+  /**
+   * Re-run an existing scan (Req 3.4, 3.5, audit B7). Loads the original
+   * ScanJob, creates a brand-new `queued` ScanJob referencing the same source
+   * parameters (`sourceType`/`sourceRef`/`scanMode`/`projectId`), re-ingests
+   * the source, enqueues the pipeline, and returns the new job.
+   *
+   * The original job's content (pasted code, uploaded ZIP buffer, demo-sample
+   * id) is not retained after its scan completes, so rerun is supported only
+   * for sources that can be re-fetched from their `sourceRef` — i.e.
+   * `repository` scans. Other source types cannot be reproduced and are
+   * rejected with a 400 explaining why.
+   */
+  public async rerunScan(id: string, userId?: string): Promise<any> {
+    const original = await this.prisma.scanJob.findUnique({ where: { id } });
+    if (!original) {
+      throw new NotFoundException(`Scan job with ID ${id} not found`);
+    }
+
+    if (original.sourceType !== "repository") {
+      throw new BadRequestException(
+        `Rerun is only supported for repository scans; the original scan used sourceType "${original.sourceType}", whose source content is not retained after the scan completes.`,
+      );
+    }
+    if (!original.sourceRef) {
+      throw new BadRequestException(
+        "Cannot rerun a repository scan without a stored repository URL.",
+      );
+    }
+
+    const input: CreateScanInput = {
+      projectId: original.projectId || undefined,
+      sourceType: original.sourceType as CreateScanInput["sourceType"],
+      sourceRef: original.sourceRef,
+      scanMode: (original.scanMode || "full") as CreateScanInput["scanMode"],
+    };
+
+    const scanJob = await this.prisma.scanJob.create({
+      data: {
+        projectId: original.projectId,
+        sourceType: original.sourceType,
+        sourceRef: original.sourceRef,
+        status: "queued",
+        scanMode: original.scanMode || "full",
+        startedBy: userId || original.startedBy || null,
+      },
+    });
+
+    this.logger.log(`Rerunning scan ${id} as new scan ${scanJob.id}`);
+    return this.prepareAndEnqueue(scanJob, input);
+  }
+
+  /**
+   * Shared ingestion + enqueue path used by both {@link createScan} and
+   * {@link rerunScan}. Prepares the per-scan temporary directory for the given
+   * source type, enqueues the BullMQ pipeline job, and returns the ScanJob.
+   * On ingestion failure the job is marked `failed`, its directory removed,
+   * and the error mapped to a meaningful HTTP status.
+   */
+  private async prepareAndEnqueue(
+    scanJob: { id: string },
+    input: CreateScanInput,
+    file?: Express.Multer.File,
+  ): Promise<any> {
     const scanDir = path.join(this.tempBaseDir, scanJob.id);
     fs.mkdirSync(scanDir, { recursive: true });
 
@@ -102,9 +310,13 @@ export class ScanService {
         const targetFile = path.join(scanDir, `pasted_code${ext}`);
         fs.writeFileSync(targetFile, input.sourceContent || "", "utf8");
       } else if (input.sourceType === "upload" && file) {
-        // Safe extraction with adm-zip
-        const zip = new AdmZip(file.buffer);
-        zip.extractAllTo(scanDir, true);
+        // Route the uploaded ZIP through the shared safe-extraction guard
+        // instead of AdmZip's unguarded extractAllTo, so the upload path gets
+        // the same per-entry path-confinement, symlink rejection, max-file-count
+        // and max-bytes protection as the GitHub tarball path (Req 4.7, 4.8,
+        // 4.8a, 4.11 — resolves audit B3). Any escaping entry fails the scan.
+        const entries = this.zipToArchiveEntries(file.buffer);
+        safeExtractArchive(entries, scanDir, this.extractLimits);
       } else if (input.sourceType === "demo-sample") {
         const demoId = input.demoSampleId || "";
         const demoDir = path.join(process.cwd(), "demo-samples", demoId);
@@ -150,9 +362,7 @@ export class ScanService {
         },
       });
       // Clean up directory if created (ingest may have already removed it).
-      if (fs.existsSync(scanDir)) {
-        fs.rmSync(scanDir, { recursive: true, force: true });
-      }
+      this.removeScanDir(scanJob.id);
       // Map ingestion failures to meaningful HTTP statuses instead of a bare
       // 500. Client-correctable problems (bad repo, private without a token)
       // become 4xx; transient transport/size problems become 400 so the user
@@ -264,9 +474,66 @@ export class ScanService {
       );
     }
 
-    return this.prisma.scanJob.update({
+    const updated = await this.prisma.scanJob.update({
       where: { id },
       data: { status: "cancelled", completedAt: new Date() },
+    });
+
+    // Req 4.10a: a cancellation is a non-success terminal state, so remove the
+    // Scan_Directory and its temporary contents. The worker's finally block
+    // also cleans up if it is mid-flight; this guarantees removal when the job
+    // is cancelled before or after the worker has run.
+    this.removeScanDir(id);
+
+    return updated;
+  }
+
+  /**
+   * Best-effort removal of a scan's temporary Scan_Directory
+   * (`temp-scans/{scanId}`). Cleanup failures are logged, never thrown, so they
+   * cannot mask the scan's terminal outcome (Req 4.10, 4.10a).
+   */
+  private removeScanDir(scanId: string): void {
+    const scanDir = path.join(this.tempBaseDir, scanId);
+    if (!fs.existsSync(scanDir)) {
+      return;
+    }
+    try {
+      fs.rmSync(scanDir, { recursive: true, force: true });
+    } catch (cleanupErr: any) {
+      this.logger.warn(
+        `Failed to remove scan directory ${scanDir}: ${cleanupErr?.message ?? cleanupErr}`,
+      );
+    }
+  }
+
+  /**
+   * Normalize an uploaded ZIP buffer into {@link ArchiveEntry}s so it can be
+   * written through the shared {@link safeExtractArchive} guard. Symlink entries
+   * are detected from the Unix mode bits in the external file attributes and
+   * marked `"symlink"` so the guard rejects them outright (Req 4.8a).
+   */
+  private zipToArchiveEntries(buffer: Buffer): ArchiveEntry[] {
+    const zip = new AdmZip(buffer);
+    return zip.getEntries().map((zipEntry): ArchiveEntry => {
+      // adm-zip exposes a Unix symlink via the high bits of the external file
+      // attributes (S_IFLNK = 0xA000).
+      const unixMode = (zipEntry.header.attr ?? 0) >>> 16;
+      const isSymlink = (unixMode & 0xf000) === 0xa000;
+      let type: ArchiveEntry["type"];
+      if (isSymlink) {
+        type = "symlink";
+      } else if (zipEntry.isDirectory) {
+        type = "directory";
+      } else {
+        type = "file";
+      }
+      return {
+        path: zipEntry.entryName,
+        type,
+        data: zipEntry.isDirectory ? undefined : zipEntry.getData(),
+        size: zipEntry.header.size,
+      };
     });
   }
 

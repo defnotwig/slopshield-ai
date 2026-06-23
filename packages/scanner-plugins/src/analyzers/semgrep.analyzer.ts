@@ -26,9 +26,12 @@ export class SemgrepAnalyzer implements StaticAnalyzer {
     try {
       const isAvailable = await this.isAvailable();
       if (!isAvailable) {
+        // Semgrep is optional. When the CLI (or its rule registry) is
+        // unavailable, record `skipped` rather than failing the scan (Req 5.7).
         return {
           analyzerName: this.name,
           success: false,
+          skipped: true,
           findings: [],
           error:
             "Semgrep CLI is not installed or not available in system PATH.",
@@ -51,11 +54,22 @@ export class SemgrepAnalyzer implements StaticAnalyzer {
             // instead of failing outright on process error exit code.
             try {
               if (!stdout && error) {
+                // The CLI was available but produced no usable output. This is
+                // most commonly because Semgrep could not reach its rule
+                // registry (e.g. `--config auto` needs network access to fetch
+                // rules). Per Req 5.7, an unavailable rule registry must be
+                // recorded as `skipped` rather than failing the scan.
+                const skipped = this.isRuleRegistryUnavailable(
+                  error.message,
+                );
                 return resolve({
                   analyzerName: this.name,
                   success: false,
+                  skipped,
                   findings: [],
-                  error: error.message,
+                  error: skipped
+                    ? `Semgrep rule registry is unavailable: ${error.message}`
+                    : error.message,
                   durationMs: Date.now() - startTime,
                 });
               }
@@ -134,6 +148,35 @@ export class SemgrepAnalyzer implements StaticAnalyzer {
         durationMs: Date.now() - startTime,
       };
     }
+  }
+
+  /**
+   * Heuristically detect whether a Semgrep failure is due to its rule registry
+   * being unreachable (e.g. no network access to fetch `--config auto` rules).
+   * Such failures are treated as `skipped` rather than `failed` (Req 5.7).
+   */
+  private isRuleRegistryUnavailable(errorMessage: string): boolean {
+    const lower = (errorMessage || "").toLowerCase();
+    const registrySignals = [
+      "registry",
+      "could not reach",
+      "failed to download",
+      "failed to fetch",
+      "network",
+      "connection",
+      "could not resolve host",
+      "getaddrinfo",
+      "enotfound",
+      "etimedout",
+      "econnrefused",
+      "timed out",
+      "temporary failure in name resolution",
+      "ssl",
+      "certificate",
+      "no rules",
+      "unable to load config",
+    ];
+    return registrySignals.some((signal) => lower.includes(signal));
   }
 
   private mapSemgrepSeverity(semgrepSev: string): FindingSeverity {

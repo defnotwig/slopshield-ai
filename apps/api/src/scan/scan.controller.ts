@@ -11,10 +11,18 @@ import {
   Req,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import { ScanService } from "./scan.service.js";
 import { ReportService } from "../report/report.service.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
-import { CreateScanInput } from "@slopshield/shared";
+import { CreateScanInput, CreateScanInputSchema } from "@slopshield/shared";
+import { AuditService, AUDIT_ACTION } from "../audit/audit.service.js";
+import { extractIp } from "../common/request-ip.js";
+import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe.js";
+import {
+  THROTTLER_NAMES,
+  resolveScanThrottle,
+} from "../common/throttler.config.js";
 
 @UseGuards(JwtAuthGuard)
 @Controller("scans")
@@ -22,9 +30,11 @@ export class ScanController {
   constructor(
     private readonly scanService: ScanService,
     private readonly reportService: ReportService,
+    private readonly auditService: AuditService,
   ) {}
 
   @Post()
+  @Throttle({ [THROTTLER_NAMES.default]: resolveScanThrottle() })
   @UseInterceptors(FileInterceptor("file"))
   public async createScan(
     @Body() body: any,
@@ -32,7 +42,7 @@ export class ScanController {
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<any> {
     // Manually parse structure since post multipart form data returns everything as strings
-    const input: CreateScanInput = {
+    const assembled = {
       projectId: body.projectId || undefined,
       sourceType: body.sourceType,
       sourceContent: body.sourceContent || undefined,
@@ -41,7 +51,25 @@ export class ScanController {
       demoSampleId: body.demoSampleId || undefined,
     };
 
-    return this.scanService.createScan(input, req.user.sub, file);
+    // Boundary validation: validate the assembled multipart input against the
+    // shared schema, rejecting non-conforming bodies with HTTP 400.
+    const input: CreateScanInput = new ZodValidationPipe(
+      CreateScanInputSchema,
+    ).transform(assembled);
+
+    const scanJob = await this.scanService.createScan(
+      input,
+      req.user.sub,
+      file,
+    );
+    await this.auditService.record({
+      actorId: req.user?.sub,
+      action: AUDIT_ACTION.SCAN_CREATE,
+      target: scanJob?.id,
+      ipAddress: extractIp(req),
+      metadata: { sourceType: input.sourceType, scanMode: input.scanMode },
+    });
+    return scanJob;
   }
 
   @Get()
@@ -66,9 +94,35 @@ export class ScanController {
     return this.scanService.cancelScan(id);
   }
 
+  @Post(":id/rerun")
+  public async rerunScan(
+    @Param("id") id: string,
+    @Req() req: any,
+  ): Promise<any> {
+    const scanJob = await this.scanService.rerunScan(id, req.user?.sub);
+    await this.auditService.record({
+      actorId: req.user?.sub,
+      action: AUDIT_ACTION.SCAN_CREATE,
+      target: scanJob?.id,
+      ipAddress: extractIp(req),
+      metadata: { rerunOf: id, sourceType: scanJob?.sourceType },
+    });
+    return scanJob;
+  }
+
   @Get(":id/report")
-  public async getReport(@Param("id") id: string): Promise<any> {
-    return this.reportService.generateReport(id);
+  public async getReport(
+    @Param("id") id: string,
+    @Req() req: any,
+  ): Promise<any> {
+    const report = await this.reportService.generateReport(id);
+    await this.auditService.record({
+      actorId: req.user?.sub,
+      action: AUDIT_ACTION.REPORT_VIEW,
+      target: id,
+      ipAddress: extractIp(req),
+    });
+    return report;
   }
 
   @Get(":id/findings")

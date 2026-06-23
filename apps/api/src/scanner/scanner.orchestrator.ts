@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { Finding } from "@slopshield/shared";
+import { Finding, AnalyzerCoverage, FindingSource } from "@slopshield/shared";
 import {
   StaticAnalyzer,
   ESLintAnalyzer,
@@ -11,6 +11,12 @@ import {
   AnalysisResult,
 } from "@slopshield/scanner-plugins";
 
+/** Result of running all analyzers: combined findings plus per-analyzer coverage. */
+export interface OrchestratorResult {
+  findings: Omit<Finding, "id" | "scanId">[];
+  coverage: AnalyzerCoverage[];
+}
+
 @Injectable()
 export class ScannerOrchestrator implements OnModuleInit {
   private readonly logger = new Logger(ScannerOrchestrator.name);
@@ -18,6 +24,24 @@ export class ScannerOrchestrator implements OnModuleInit {
   private readonly analyzerTimeoutMs = Number(
     process.env.ANALYZER_TIMEOUT_MS ?? 45_000,
   );
+
+  /**
+   * Maps an analyzer's internal `name` to the shared `FindingSource` value used
+   * in `AnalyzerCoverage`, so coverage attribution matches finding attribution.
+   */
+  private static readonly ANALYZER_SOURCE_MAP: Record<string, FindingSource> = {
+    "secret-scanner": "secret-scanner",
+    eslint: "eslint",
+    "typescript-compiler": "typescript",
+    semgrep: "semgrep",
+    "slop-scanner": "rules-engine",
+  };
+
+  private resolveSource(analyzerName: string): FindingSource {
+    return (
+      ScannerOrchestrator.ANALYZER_SOURCE_MAP[analyzerName] ?? "rules-engine"
+    );
+  }
 
   public async onModuleInit(): Promise<void> {
     // Register all pluggable static analyzers
@@ -44,14 +68,13 @@ export class ScannerOrchestrator implements OnModuleInit {
    * not crash the entire scanning pipeline.
    *
    * @param context Ingestion context containing scan directory and target files
-   * @returns Array of combined Omit<Finding, 'id' | 'scanId'>[]
+   * @returns Combined findings plus per-analyzer coverage records
    */
-  public async runAll(
-    context: AnalysisContext,
-  ): Promise<Omit<Finding, "id" | "scanId">[]> {
+  public async runAll(context: AnalysisContext): Promise<OrchestratorResult> {
     const activeAnalyzers: StaticAnalyzer[] = [];
+    const coverage: AnalyzerCoverage[] = [];
 
-    // Filter to only run available analyzers
+    // Filter to only run available analyzers; record unavailable ones as skipped.
     for (const analyzer of this.analyzers) {
       if (await analyzer.isAvailable()) {
         activeAnalyzers.push(analyzer);
@@ -59,12 +82,19 @@ export class ScannerOrchestrator implements OnModuleInit {
         this.logger.warn(
           `Scanner [${analyzer.name}] is unavailable; skipping.`,
         );
+        coverage.push({
+          analyzer: this.resolveSource(analyzer.name),
+          status: "skipped",
+          findingCount: 0,
+          durationMs: 0,
+          reason: "Analyzer is unavailable (CLI or dependency missing)",
+        });
       }
     }
 
     if (activeAnalyzers.length === 0) {
       this.logger.warn("No static analyzers are available to run.");
-      return [];
+      return { findings: [], coverage };
     }
 
     this.logger.log(
@@ -91,7 +121,9 @@ export class ScannerOrchestrator implements OnModuleInit {
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
-      const analyzerName = activeAnalyzers[i].name;
+      const analyzer = activeAnalyzers[i];
+      const analyzerName = analyzer.name;
+      const source = this.resolveSource(analyzerName);
 
       if (result.status === "fulfilled") {
         const analysisResult = result.value;
@@ -100,19 +132,53 @@ export class ScannerOrchestrator implements OnModuleInit {
             `Analyzer [${analyzerName}] completed: ${analysisResult.findings.length} findings in ${analysisResult.durationMs}ms`,
           );
           combinedFindings.push(...analysisResult.findings);
+          coverage.push({
+            analyzer: source,
+            status: "ran",
+            findingCount: analysisResult.findings.length,
+            durationMs: Math.max(0, Math.round(analysisResult.durationMs)),
+          });
+        } else if (analysisResult.skipped) {
+          // An optional analyzer (e.g. Semgrep) deliberately skipped because a
+          // CLI or rule registry was unavailable. This must not fail the scan
+          // (Req 5.7) — record it as `skipped`, not `failed`.
+          this.logger.warn(
+            `Analyzer [${analyzerName}] skipped: ${analysisResult.error || "unavailable"}`,
+          );
+          coverage.push({
+            analyzer: source,
+            status: "skipped",
+            findingCount: 0,
+            durationMs: Math.max(0, Math.round(analysisResult.durationMs)),
+            reason: analysisResult.error || "Analyzer skipped",
+          });
         } else {
           this.logger.error(
             `Analyzer [${analyzerName}] failed: ${analysisResult.error || "Unknown error"}`,
           );
+          coverage.push({
+            analyzer: source,
+            status: "failed",
+            findingCount: 0,
+            durationMs: Math.max(0, Math.round(analysisResult.durationMs)),
+            reason: analysisResult.error || "Unknown error",
+          });
         }
       } else {
         this.logger.error(
           `Analyzer [${analyzerName}] promise rejected: ${String(result.reason)}`,
         );
+        coverage.push({
+          analyzer: source,
+          status: "failed",
+          findingCount: 0,
+          durationMs: 0,
+          reason: String(result.reason),
+        });
       }
     }
 
-    return combinedFindings;
+    return { findings: combinedFindings, coverage };
   }
 
   /**

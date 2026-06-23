@@ -1,11 +1,40 @@
 import { Injectable } from "@nestjs/common";
+import type {
+  DashboardSummary,
+  DashboardTrendPoint,
+  TopIssue,
+  StandardViolation,
+  FindingCategory,
+} from "@slopshield/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
+
+/**
+ * Human-readable titles for each finding category. Used to populate
+ * `TopIssue.title` so the Web_App can render a label without re-deriving it
+ * from the raw category slug.
+ */
+const CATEGORY_TITLES: Record<FindingCategory, string> = {
+  "backend-security": "Backend Security",
+  "frontend-security": "Frontend Security",
+  "backend-architecture": "Backend Architecture",
+  "frontend-architecture": "Frontend Architecture",
+  maintainability: "Maintainability",
+  testability: "Testability",
+  accessibility: "Accessibility",
+  reliability: "Reliability",
+  documentation: "Documentation",
+  general: "General",
+};
+
+function titleForCategory(category: string): string {
+  return CATEGORY_TITLES[category as FindingCategory] ?? category;
+}
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  public async getSummary(projectId?: string): Promise<any> {
+  public async getSummary(projectId?: string): Promise<DashboardSummary> {
     const filter: any = projectId ? { projectId } : {};
 
     const totalScans = await this.prisma.scanJob.count({
@@ -23,7 +52,7 @@ export class DashboardService {
       },
     });
 
-    const avgScore =
+    const averageScore =
       completedScans.length > 0
         ? Math.round(
             completedScans.reduce(
@@ -33,29 +62,37 @@ export class DashboardService {
           )
         : 100;
 
-    const blockedCount = await this.prisma.scanJob.count({
+    const blockedScans = await this.prisma.scanJob.count({
       where: {
         ...filter,
         statusResult: "blocked",
       },
     });
 
-    const passedCount = await this.prisma.scanJob.count({
+    const passedScans = await this.prisma.scanJob.count({
       where: {
         ...filter,
-        statusResult: { in: ["passed", "passed-with-warnings"] },
+        statusResult: "passed",
+      },
+    });
+
+    const warningScans = await this.prisma.scanJob.count({
+      where: {
+        ...filter,
+        statusResult: "passed-with-warnings",
       },
     });
 
     return {
       totalScans,
-      avgScore,
-      blockedCount,
-      passedCount,
+      averageScore,
+      blockedScans,
+      passedScans,
+      warningScans,
     };
   }
 
-  public async getTrends(projectId?: string): Promise<any[]> {
+  public async getTrends(projectId?: string): Promise<DashboardTrendPoint[]> {
     const filter: any = projectId ? { projectId } : {};
 
     // Get last 20 completed scans with scores
@@ -83,7 +120,7 @@ export class DashboardService {
     }));
   }
 
-  public async getTopIssues(projectId?: string): Promise<any[]> {
+  public async getTopIssues(projectId?: string): Promise<TopIssue[]> {
     const filter: any = projectId ? { scanJob: { projectId } } : {};
 
     // Group findings by category
@@ -105,11 +142,14 @@ export class DashboardService {
 
     return categoriesGroup.map((g: any) => ({
       category: g.category,
+      title: titleForCategory(g.category),
       count: g._count.id,
     }));
   }
 
-  public async getStandardsViolations(projectId?: string): Promise<any[]> {
+  public async getStandardsViolations(
+    projectId?: string,
+  ): Promise<StandardViolation[]> {
     const filter: any = projectId ? { scanJob: { projectId } } : {};
 
     const findings = await this.prisma.finding.findMany({

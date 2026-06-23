@@ -4,6 +4,7 @@ import * as argon2 from "argon2";
 
 import { AuthModule } from "./auth.module";
 import { PrismaService } from "../prisma/prisma.service";
+import { AuditModule } from "../audit/audit.module";
 
 /**
  * Integration tests for CORS and authentication.
@@ -39,32 +40,65 @@ describe("CORS + authentication (integration)", () => {
 
   // In-memory user store standing in for the Prisma `user` model. Only the
   // methods AuthService actually calls (`findUnique`, `create`) are implemented.
+  // The `refreshToken` model is backed by a parallel in-memory store so the
+  // store-backed token issuance / refresh / revocation logic works without a
+  // live Postgres.
   const buildPrismaFake = (
     users: Array<Record<string, unknown>>,
-  ): Partial<PrismaService> => ({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    user: {
-      findUnique: async ({
-        where,
-      }: {
-        where: { email?: string; id?: string };
-      }) => {
-        if (where.email !== undefined) {
-          return users.find((u) => u.email === where.email) ?? null;
-        }
-        if (where.id !== undefined) {
-          return users.find((u) => u.id === where.id) ?? null;
-        }
-        return null;
-      },
-      create: async ({ data }: { data: Record<string, unknown> }) => {
-        const created = { id: SEED_USER_ID, ...data };
-        users.push(created);
-        return created;
-      },
+  ): Partial<PrismaService> => {
+    const refreshTokens: Array<Record<string, unknown>> = [];
+    return {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any,
-  });
+      user: {
+        findUnique: async ({
+          where,
+        }: {
+          where: { email?: string; id?: string };
+        }) => {
+          if (where.email !== undefined) {
+            return users.find((u) => u.email === where.email) ?? null;
+          }
+          if (where.id !== undefined) {
+            return users.find((u) => u.id === where.id) ?? null;
+          }
+          return null;
+        },
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          const created = { id: SEED_USER_ID, ...data };
+          users.push(created);
+          return created;
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      refreshToken: {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          const created = { id: `rt_${refreshTokens.length}`, revokedAt: null, ...data };
+          refreshTokens.push(created);
+          return created;
+        },
+        findUnique: async ({ where }: { where: { jti?: string } }) =>
+          refreshTokens.find((t) => t.jti === where.jti) ?? null,
+        updateMany: async ({
+          where,
+          data,
+        }: {
+          where: { jti?: string; revokedAt?: null };
+          data: Record<string, unknown>;
+        }) => {
+          let count = 0;
+          for (const t of refreshTokens) {
+            if (where.jti !== undefined && t.jti !== where.jti) continue;
+            if (where.revokedAt === null && t.revokedAt !== null) continue;
+            Object.assign(t, data);
+            count += 1;
+          }
+          return { count };
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+    };
+  };
 
   beforeAll(async () => {
     originalEnv = process.env;
@@ -94,7 +128,7 @@ describe("CORS + authentication (integration)", () => {
     ];
 
     const moduleRef = await Test.createTestingModule({
-      imports: [AuthModule],
+      imports: [AuthModule, AuditModule],
     })
       .overrideProvider(PrismaService)
       .useValue(buildPrismaFake(seededUsers))
@@ -221,5 +255,88 @@ describe("CORS + authentication (integration)", () => {
     expect(profile.email).toBe(SEED_EMAIL);
     // Profile is sanitized — the password hash is never returned.
     expect(profile.password).toBeUndefined();
+  });
+
+  // -------------------------------------------------------------------------
+  // Requirement 1.6 — a valid refresh token is exchanged for a new access token.
+  // -------------------------------------------------------------------------
+  it("POST /api/auth/refresh with a valid refresh token returns a new access token (Req 1.6)", async () => {
+    const loginRes = await login();
+    const { refreshToken } = (await loginRes.json()) as {
+      refreshToken: string;
+    };
+
+    const res = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { accessToken?: string };
+    expect(typeof body.accessToken).toBe("string");
+    expect((body.accessToken ?? "").length).toBeGreaterThan(0);
+
+    // The freshly issued access token is accepted by a protected route.
+    const meRes = await fetch(`${baseUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${body.accessToken}` },
+    });
+    expect(meRes.status).toBe(200);
+  });
+
+  // -------------------------------------------------------------------------
+  // Requirement 1.7 — invalid/garbage refresh tokens are rejected with 401.
+  // -------------------------------------------------------------------------
+  it("POST /api/auth/refresh with an invalid refresh token responds 401 (Req 1.7)", async () => {
+    const res = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: "not.a.valid.jwt" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/auth/refresh with no token responds 401 (Req 1.7)", async () => {
+    const res = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  // -------------------------------------------------------------------------
+  // Requirement 1.5 — logout revokes the refresh token; it can no longer be
+  // exchanged afterwards (Req 1.5 + 1.7).
+  // -------------------------------------------------------------------------
+  it("a refresh token can no longer be exchanged after logout (Req 1.5, 1.7)", async () => {
+    const loginRes = await login();
+    const { refreshToken } = (await loginRes.json()) as {
+      refreshToken: string;
+    };
+
+    // The token works before logout.
+    const before = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    expect(before.status).toBe(201);
+
+    // Logout revokes it.
+    const logoutRes = await fetch(`${baseUrl}/api/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    expect([200, 201]).toContain(logoutRes.status);
+
+    // After logout the same token is rejected.
+    const after = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    expect(after.status).toBe(401);
   });
 });

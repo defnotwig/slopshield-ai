@@ -6,12 +6,13 @@ import { useScans } from "@/hooks/use-scans";
 import { useProjects } from "@/hooks/use-projects";
 import { StatusBadge } from "@/components/status-badge";
 import {
-  Search,
   Calendar,
   RefreshCw,
   FolderOpen,
   ArrowRight,
   ArrowLeft,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 export default function ScansHistoryPage() {
@@ -23,6 +24,7 @@ export default function ScansHistoryPage() {
   const {
     data: scansData,
     isLoading,
+    isError,
     refetch,
   } = useScans(page, 10, projectId, status);
 
@@ -109,8 +111,33 @@ export default function ScansHistoryPage() {
       {/* Scans List Table */}
       <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden bg-white dark:bg-gray-950/20">
         {isLoading ? (
-          <div className="p-12 text-center text-sm font-mono text-gray-500">
-            Fetching scan history...
+          <div className="flex flex-col items-center justify-center p-12 text-center space-y-3">
+            <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
+            <p className="text-sm font-mono text-gray-500">
+              Fetching scan history...
+            </p>
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
+            <div className="p-4 bg-red-500/10 text-red-500 rounded-full w-fit mx-auto border border-red-500/20">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                Failed to load scan history
+              </h3>
+              <p className="text-xs text-gray-500">
+                We couldn&apos;t reach the scan service. Check your API server
+                connection and try again.
+              </p>
+            </div>
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry
+            </button>
           </div>
         ) : scans.length === 0 ? (
           <div className="p-12 text-center text-sm text-gray-500">

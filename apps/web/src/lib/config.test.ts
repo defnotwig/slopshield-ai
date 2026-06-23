@@ -97,6 +97,7 @@ describe("assertLiveConfig live guard", () => {
       isMock: true,
       apiUrl: "",
       appName: "SlopShield AI",
+      showMockIndicator: false,
       ...overrides,
     };
   }

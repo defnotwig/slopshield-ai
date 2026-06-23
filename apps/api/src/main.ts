@@ -13,7 +13,8 @@ import compression from "compression";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
-import { resolvePort, findMissingEnv } from "./common/env";
+import { resolvePort, findMissingEnv, findRefreshSecretIssue, formatIntegrationSummary } from "./common/env";
+import { parseCorsAllowlist, buildCorsOriginCallback } from "./common/cors";
 
 export async function bootstrap(): Promise<void> {
   const logger = new Logger("Bootstrap");
@@ -30,8 +31,17 @@ export async function bootstrap(): Promise<void> {
     throw new Error(`Missing required env: ${missing.join(", ")}`);
   }
 
+  // In production, REFRESH_SECRET must be present and distinct from JWT_SECRET
+  // with no insecure literal fallback (Req 11.3).
+  const refreshSecretIssue = findRefreshSecretIssue();
+  if (refreshSecretIssue !== null) {
+    logger.error(refreshSecretIssue);
+    throw new Error(refreshSecretIssue);
+  }
+
   const app = await NestFactory.create(AppModule, {
     logger: ["error", "warn", "log", "debug", "verbose"],
+    rawBody: true,
   });
 
   // ---------------------------------------------------------------------------
@@ -47,12 +57,13 @@ export async function bootstrap(): Promise<void> {
   app.use(compression());
 
   // ---------------------------------------------------------------------------
-  // CORS — Cross-Origin Resource Sharing allows the Next.js frontend
-  // (default http://localhost:3000) to communicate with the API.
+  // CORS — Cross-Origin Resource Sharing. `CORS_ORIGIN` is an allowlist (a
+  // single origin or a comma-separated list); a cross-origin request is allowed
+  // only when its Origin matches an allowlist entry (Req 10.5).
   // ---------------------------------------------------------------------------
-  const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+  const corsAllowlist = parseCorsAllowlist();
   app.enableCors({
-    origin: corsOrigin,
+    origin: buildCorsOriginCallback(corsAllowlist),
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
@@ -81,7 +92,15 @@ export async function bootstrap(): Promise<void> {
     `🛡️  SlopShield AI API is running on http://localhost:${port}/api`,
   );
   logger.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
-  logger.log(`🌐 CORS origin: ${corsOrigin}`);
+  logger.log(`🌐 CORS allowlist: ${corsAllowlist.join(", ")}`);
+
+  // ---------------------------------------------------------------------------
+  // One-time startup integration summary — reports each optional Integration
+  // (Gemini, GitHub token, Lark) as configured/skipped/error so operators can
+  // see what is actually wired up without the service hard-failing on optional
+  // keys (Req 11.5).
+  // ---------------------------------------------------------------------------
+  logger.log(`🔌 ${formatIntegrationSummary()}`);
 }
 
 // Only auto-bootstrap when this module is the process entry point. This keeps

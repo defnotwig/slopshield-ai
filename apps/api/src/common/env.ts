@@ -4,6 +4,9 @@
  * can be exercised by property tests independently of the bootstrap.
  */
 
+import type { ReadinessReport } from "@slopshield/shared";
+import { getGitHubAppStatus } from "../github-app/github-app.config";
+
 /**
  * Resolve the port the API should listen on.
  *
@@ -35,7 +38,41 @@ const REQUIRED_IN_PRODUCTION = [
  */
 export function findMissingEnv(env: NodeJS.ProcessEnv = process.env): string[] {
   if (env.NODE_ENV !== "production") return [];
-  return REQUIRED_IN_PRODUCTION.filter((k) => !env[k] || env[k]!.trim() === "");
+  return REQUIRED_IN_PRODUCTION.filter((k) => {
+    const value = env[k];
+    return value === undefined || value.trim() === "";
+  });
+}
+
+/**
+ * In production, verify that `REFRESH_SECRET` is present and distinct from
+ * `JWT_SECRET`, with no insecure literal fallback (Req 11.3).
+ *
+ * Returns a human-readable issue describing the first problem found, or `null`
+ * when the configuration is valid. Outside production this always returns
+ * `null` so local/test runs can use dev defaults without secret-shaped
+ * literals.
+ *
+ * - Returns an issue when `REFRESH_SECRET` is absent or blank.
+ * - Returns an issue when `REFRESH_SECRET` equals `JWT_SECRET` (not distinct).
+ * - Returns `null` when `REFRESH_SECRET` is present and distinct from
+ *   `JWT_SECRET`.
+ */
+export function findRefreshSecretIssue(
+  env: NodeJS.ProcessEnv = process.env,
+): string | null {
+  if (env.NODE_ENV !== "production") return null;
+
+  const refresh = env.REFRESH_SECRET;
+  if (refresh === undefined || refresh.trim() === "") {
+    return "REFRESH_SECRET is required in production";
+  }
+
+  if (refresh === env.JWT_SECRET) {
+    return "REFRESH_SECRET must be distinct from JWT_SECRET in production";
+  }
+
+  return null;
 }
 
 /**
@@ -54,3 +91,62 @@ export function capFiles<T>(files: T[], max: number): T[] {
  */
 export const maxAnalyzeFiles = (): number =>
   Number(process.env.MAX_ANALYZE_FILES ?? 50);
+
+// ---------------------------------------------------------------------------
+// Optional-integration readiness (Req 11.5, 11.6, 11.7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Environment variable that configures each simple optional integration. An
+ * absent or blank value means the integration is not configured and is reported
+ * as `skipped` rather than `error`. The GitHub App integration uses a separate
+ * multi-variable check via `getGitHubAppStatus`.
+ */
+const INTEGRATION_ENV_KEYS = {
+  gemini: "GEMINI_API_KEY",
+  githubToken: "GITHUB_TOKEN",
+  lark: "LARK_WEBHOOK_URL",
+} as const;
+
+/** True when an env value is present and non-blank. */
+function isConfigured(value: string | undefined): boolean {
+  return value !== undefined && value.trim() !== "";
+}
+
+/**
+ * Compute the per-integration readiness report for the optional integrations
+ * (Gemini, GitHub token, Lark, GitHub App).
+ *
+ * Each simple integration is reported as `configured` when its backing
+ * environment variable is present and non-blank, and `skipped` when absent or
+ * blank. The GitHub App integration uses a more complex check via
+ * `getGitHubAppStatus` which reports `configured`, `skipped`, or `error`.
+ * This function never throws so it can never hard-fail startup or the
+ * readiness endpoint (Req 11.4, 11.6, 11.7).
+ */
+export function computeReadiness(
+  env: NodeJS.ProcessEnv = process.env,
+): ReadinessReport {
+  return {
+    gemini: isConfigured(env[INTEGRATION_ENV_KEYS.gemini])
+      ? "configured"
+      : "skipped",
+    githubToken: isConfigured(env[INTEGRATION_ENV_KEYS.githubToken])
+      ? "configured"
+      : "skipped",
+    lark: isConfigured(env[INTEGRATION_ENV_KEYS.lark])
+      ? "configured"
+      : "skipped",
+    githubApp: getGitHubAppStatus(env),
+  };
+}
+
+/**
+ * Build the one-time startup summary line describing each Integration's
+ * readiness as `configured`, `skipped`, or `error` (Req 11.5).
+ */
+export function formatIntegrationSummary(
+  report: ReadinessReport = computeReadiness(),
+): string {
+  return `Integrations: gemini=${report.gemini}, githubToken=${report.githubToken}, lark=${report.lark}, githubApp=${report.githubApp}`;
+}

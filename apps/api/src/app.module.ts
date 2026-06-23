@@ -13,10 +13,15 @@ dotenv.config({ path: path.join(process.cwd(), ".env") });
 
 import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { APP_GUARD, APP_PIPE } from "@nestjs/core";
 import { BullModule } from "@nestjs/bullmq";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import IORedis from "ioredis";
 import type { ConnectionOptions } from "bullmq";
+
+import { GlobalZodValidationPipe } from "./common/pipes/global-zod-validation.pipe.js";
+import { buildThrottlerOptions } from "./common/throttler.config.js";
 
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
@@ -31,6 +36,9 @@ import { ScoringModule } from "./scoring/scoring.module";
 import { ReportModule } from "./report/report.module";
 import { NotificationModule } from "./notification/notification.module";
 import { HealthModule } from "./health/health.module.js";
+import { AuditModule } from "./audit/audit.module";
+import { GitHubAppModule } from "./github-app/github-app.module";
+import { isGitHubAppEnabled } from "./github-app/github-app.config";
 import {
   buildRedisConnection,
   attachRedisErrorLogger,
@@ -86,9 +94,18 @@ import {
     }),
 
     // -------------------------------------------------------------------------
+    // ThrottlerModule — global request rate limiting (Req 10.2, 10.3, B4).
+    // Registers a generous global `default` throttler plus tighter named
+    // `login` and `scan` throttlers referenced by @Throttle overrides on
+    // POST /auth/login and POST /scans. Exceeding a limit yields HTTP 429.
+    // -------------------------------------------------------------------------
+    ThrottlerModule.forRoot(buildThrottlerOptions()),
+
+    // -------------------------------------------------------------------------
     // Feature modules — each encapsulates a bounded context of the application.
     // -------------------------------------------------------------------------
     PrismaModule,
+    AuditModule,
     AuthModule,
     ScanModule,
     ProjectModule,
@@ -101,6 +118,30 @@ import {
     ReportModule,
     NotificationModule,
     HealthModule,
+
+    // -------------------------------------------------------------------------
+    // GitHub App — conditionally registered when the feature is enabled and
+    // all required credentials are present (Req 11.3).
+    // -------------------------------------------------------------------------
+    ...(isGitHubAppEnabled() ? [GitHubAppModule] : []),
+  ],
+  providers: [
+    // -------------------------------------------------------------------------
+    // Global validation (Req 10.1) — validates any handler parameter whose DTO
+    // carries a Zod schema, rejecting non-conforming payloads with HTTP 400.
+    // -------------------------------------------------------------------------
+    {
+      provide: APP_PIPE,
+      useClass: GlobalZodValidationPipe,
+    },
+    // -------------------------------------------------------------------------
+    // Global rate limiting (Req 10.2, 10.3) — applies the ThrottlerModule's
+    // named limits to every route; exceed → HTTP 429.
+    // -------------------------------------------------------------------------
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

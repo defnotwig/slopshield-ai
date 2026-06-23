@@ -58,3 +58,82 @@ export const CATEGORY_ICONS: Record<FindingCategory, string> = {
   documentation: "FileText",
   general: "Info",
 };
+
+/**
+ * How each derivation rule combines its source category raw scores into a
+ * single displayed score.
+ *
+ * - `direct`: the displayed score equals the single source category's raw score.
+ * - `mean`: the displayed score is the arithmetic mean of all source raw scores.
+ */
+export type CategoryScoreDerivation = "direct" | "mean";
+
+/**
+ * Describes how a single displayed/persisted category score is derived from the
+ * raw {@link FindingCategory} scores produced by the scanner pipeline.
+ */
+export interface CategoryScoreSemantic {
+  /** The raw finding categories whose scores feed this displayed score. */
+  sources: FindingCategory[];
+  /** How the source raw scores are combined. */
+  derivation: CategoryScoreDerivation;
+  /** Human-readable explanation of the mapping. */
+  description: string;
+}
+
+/**
+ * Canonical, exported documentation of the category-score semantics shared
+ * across the API persistence columns and the Web_App display labels (resolves
+ * audit finding C1). This is the single source of truth that keeps the
+ * `ScanJob.*Score` columns and the dashboard scorecards in agreement about how
+ * the displayed categories relate to the raw {@link FindingCategory} scores.
+ *
+ * Semantics:
+ * - `frontend` is sourced directly from the `accessibility` raw score.
+ * - `security` is the mean of `backend-security` and `frontend-security`.
+ * - `architecture` is the mean of `backend-architecture` and `frontend-architecture`.
+ *
+ * The remaining displayed categories map one-to-one onto their raw category.
+ */
+export const CATEGORY_SCORE_SEMANTICS = {
+  frontend: {
+    sources: ["accessibility"],
+    derivation: "direct",
+    description: "Frontend score is sourced from the accessibility raw score.",
+  },
+  security: {
+    sources: ["backend-security", "frontend-security"],
+    derivation: "mean",
+    description:
+      "Security score is the mean of the backend-security and frontend-security raw scores.",
+  },
+  architecture: {
+    sources: ["backend-architecture", "frontend-architecture"],
+    derivation: "mean",
+    description:
+      "Architecture score is the mean of the backend-architecture and frontend-architecture raw scores.",
+  },
+  maintainability: {
+    sources: ["maintainability"],
+    derivation: "direct",
+    description: "Maintainability score maps directly to the maintainability raw score.",
+  },
+  testability: {
+    sources: ["testability"],
+    derivation: "direct",
+    description: "Testability score maps directly to the testability raw score.",
+  },
+  reliability: {
+    sources: ["reliability"],
+    derivation: "direct",
+    description: "Reliability score maps directly to the reliability raw score.",
+  },
+  documentation: {
+    sources: ["documentation"],
+    derivation: "direct",
+    description: "Documentation score maps directly to the documentation raw score.",
+  },
+} as const satisfies Record<string, CategoryScoreSemantic>;
+
+/** Displayed/persisted category-score keys documented by {@link CATEGORY_SCORE_SEMANTICS}. */
+export type CategoryScoreKey = keyof typeof CATEGORY_SCORE_SEMANTICS;

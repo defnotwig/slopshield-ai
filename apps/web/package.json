@@ -8,8 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
+    "test:watch": "vitest",
     "clean": "rimraf .next"
   },
   "dependencies": {

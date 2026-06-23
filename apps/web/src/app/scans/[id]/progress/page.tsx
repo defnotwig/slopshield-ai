@@ -5,14 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useScan } from "@/hooks/use-scans";
 import { useScanProgress } from "@/hooks/use-scan-progress";
 import { ScanTimeline } from "@/components/scan-timeline";
-import { ArrowRight, FileText, Loader2, AlertCircle } from "lucide-react";
+import { ArrowRight, FileText, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 export default function ScanProgressPage() {
   const router = useRouter();
   const params = useParams();
   const scanId = params.id as string;
 
-  const { data: scan, isLoading, isError } = useScan(scanId);
+  const { data: scan, isLoading, isError, refetch } = useScan(scanId);
   const { progress, status } = useScanProgress(scanId, scan?.status);
 
   // If the scan was already completed before loading this page, redirect directly to report
@@ -53,6 +53,13 @@ export default function ScanProgressPage() {
         <p className="text-xs text-gray-500">
           The scan job may not exist or database access failed.
         </p>
+        <button
+          onClick={() => refetch()}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Retry
+        </button>
       </div>
     );
   }

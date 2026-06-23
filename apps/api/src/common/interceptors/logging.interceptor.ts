@@ -10,6 +10,16 @@ import { tap } from "rxjs/operators";
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 
+import { buildStructuredLog } from "../structured-log";
+
+/**
+ * Request logging interceptor (Req 10.9).
+ *
+ * Assigns each request a correlation id (surfaced via the `X-Request-ID`
+ * response header) and emits a single structured, secret-redacted JSON log
+ * line per request capturing method, path, status code, and duration. Errors
+ * are logged at error level; successful responses at info level.
+ */
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger("HTTP");
@@ -35,16 +45,31 @@ export class LoggingInterceptor implements NestInterceptor {
       tap({
         next: () => {
           const duration = Date.now() - startTime;
-          const statusCode = response.statusCode;
           this.logger.log(
-            `[${requestId}] ${method} ${url} ${statusCode} - ${duration}ms`,
+            buildStructuredLog({
+              level: "info",
+              event: "http.request",
+              requestId,
+              method,
+              path: url,
+              statusCode: response.statusCode,
+              durationMs: duration,
+            }),
           );
         },
         error: (err: any) => {
           const duration = Date.now() - startTime;
-          const statusCode = err.status || 500;
           this.logger.error(
-            `[${requestId}] ${method} ${url} ${statusCode} - ${duration}ms - Error: ${err.message || err}`,
+            buildStructuredLog({
+              level: "error",
+              event: "http.request",
+              requestId,
+              method,
+              path: url,
+              statusCode: err?.status ?? 500,
+              durationMs: duration,
+              error: err?.message ?? String(err),
+            }),
           );
         },
       }),

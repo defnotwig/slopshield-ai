@@ -11,10 +11,17 @@
 
 import { describe, expect, it, afterEach, vi } from "vitest";
 import {
+  DashboardSummarySchema,
+  DashboardTrendPointSchema,
+  TopIssueSchema,
+  StandardViolationSchema,
+} from "@slopshield/shared";
+import {
   mockScanJobs,
-  mockFindingsByScanId,
   mockDashboardSummary,
   mockDashboardTrends,
+  mockDashboardTopIssues,
+  mockDashboardStandards,
   mockProjects,
 } from "./mock-data";
 
@@ -49,38 +56,27 @@ describe("mock-data: dashboard aggregate consistency (Requirements 4.3, 4.2)", (
     expect(mockDashboardSummary.totalScans).toBe(mockScanJobs.length);
   });
 
-  it("openFindings equals the total findings across all scans", () => {
-    const expectedOpenFindings = Object.values(mockFindingsByScanId).reduce(
-      (sum, findings) => sum + findings.length,
-      0,
-    );
-    expect(mockDashboardSummary.openFindings).toBe(expectedOpenFindings);
-  });
-
-  it("blockedCount equals the number of scans with statusResult 'blocked'", () => {
+  it("blockedScans equals the number of scans with statusResult 'blocked'", () => {
     const expectedBlocked = mockScanJobs.filter(
       (s) => s.statusResult === "blocked",
     ).length;
-    expect(mockDashboardSummary.blockedCount).toBe(expectedBlocked);
+    expect(mockDashboardSummary.blockedScans).toBe(expectedBlocked);
   });
 
-  it("scansByVerdict counts match the scan jobs grouped by statusResult", () => {
-    const expectedVerdicts = mockScanJobs.reduce<Record<string, number>>(
-      (acc, scan) => {
-        if (scan.statusResult) {
-          acc[scan.statusResult] = (acc[scan.statusResult] ?? 0) + 1;
-        }
-        return acc;
-      },
-      {},
-    );
-    expect(mockDashboardSummary.scansByVerdict).toEqual(expectedVerdicts);
+  it("passedScans counts scans with a passed or passed-with-warnings verdict", () => {
+    const expectedPassed = mockScanJobs.filter(
+      (s) =>
+        s.statusResult === "passed" ||
+        s.statusResult === "passed-with-warnings",
+    ).length;
+    expect(mockDashboardSummary.passedScans).toBe(expectedPassed);
+  });
 
-    const verdictTotal = Object.values(
-      mockDashboardSummary.scansByVerdict,
-    ).reduce((sum, n) => sum + n, 0);
-    const scansWithVerdict = mockScanJobs.filter((s) => s.statusResult).length;
-    expect(verdictTotal).toBe(scansWithVerdict);
+  it("warningScans counts scans with a needs-cleanup verdict", () => {
+    const expectedWarnings = mockScanJobs.filter(
+      (s) => s.statusResult === "needs-cleanup",
+    ).length;
+    expect(mockDashboardSummary.warningScans).toBe(expectedWarnings);
   });
 
   it("averageScore is the rounded mean of completed scans with a score", () => {
@@ -97,6 +93,30 @@ describe("mock-data: dashboard aggregate consistency (Requirements 4.3, 4.2)", (
     expect(mockDashboardSummary.averageScore).toBe(expectedAverage);
     expect(mockDashboardSummary.averageScore).toBeGreaterThanOrEqual(0);
     expect(mockDashboardSummary.averageScore).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("mock-data: dashboard payloads conform to shared schemas (Requirement 8.3)", () => {
+  it("mockDashboardSummary parses against DashboardSummarySchema", () => {
+    expect(() => DashboardSummarySchema.parse(mockDashboardSummary)).not.toThrow();
+  });
+
+  it("every trend point parses against DashboardTrendPointSchema", () => {
+    for (const point of mockDashboardTrends) {
+      expect(() => DashboardTrendPointSchema.parse(point)).not.toThrow();
+    }
+  });
+
+  it("every top issue parses against TopIssueSchema", () => {
+    for (const issue of mockDashboardTopIssues) {
+      expect(() => TopIssueSchema.parse(issue)).not.toThrow();
+    }
+  });
+
+  it("every standard violation parses against StandardViolationSchema", () => {
+    for (const violation of mockDashboardStandards) {
+      expect(() => StandardViolationSchema.parse(violation)).not.toThrow();
+    }
   });
 });
 

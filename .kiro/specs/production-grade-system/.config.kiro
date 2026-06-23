@@ -1,0 +1,7 @@
+{
+  "specType": "feature",
+  "workflowType": "requirements-first",
+  "featureName": "production-grade-system",
+  "createdBy": "production-hardening-mandate",
+  "notes": "Spec-first, audit-first hardening of SlopShield AI to a real production-grade DevSecOps quality gate. Mock data permitted only behind explicit local demo mode; live mode must use real backend data only."
+}

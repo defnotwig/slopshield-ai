@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Editor from "@monaco-editor/react";
 import { useTheme } from "next-themes";
+import { SOURCE_TYPE } from "@slopshield/shared";
 import { useProjects } from "@/hooks/use-projects";
 import { useCreateScan } from "@/hooks/use-scans";
 import {
@@ -82,7 +83,7 @@ export default function NewScanPage() {
         }
         body = {
           projectId: projectId || undefined,
-          sourceType: "git",
+          sourceType: SOURCE_TYPE.REPOSITORY,
           sourceRef,
           scanMode,
         };

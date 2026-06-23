@@ -1,5 +1,6 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Job } from "bullmq";
 import * as fs from "fs";
 import * as path from "path";
@@ -29,17 +30,79 @@ export class ScanProcessor extends WorkerHost {
     private readonly reportService: ReportService,
     private readonly larkService: LarkService,
     private readonly notificationService: NotificationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     super();
   }
 
   public async process(job: Job<any, any, string>): Promise<any> {
-    const { scanId, scanDir } = job.data;
+    const { scanId, scanDir, timeoutMs } = job.data;
     this.logger.log(
       `Processing scan job pipeline: ${scanId} in directory: ${scanDir}`,
     );
 
-    try {
+    // If a timeout is specified (e.g., for PR-triggered scans), wrap execution
+    // in a race against a timeout promise so that long-running scans are cancelled.
+    if (timeoutMs && typeof timeoutMs === 'number' && timeoutMs > 0) {
+      return Promise.race([
+        this.executeProcessing(scanId, scanDir),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`Scan timed out after ${Math.round(timeoutMs / 1000)}s`)),
+            timeoutMs,
+          ),
+        ),
+      ]).catch(async (err: any) => {
+        this.logger.error(`Scan pipeline crashed: ${err.message}`, err.stack);
+        await this.prisma.scanJob.update({
+          where: { id: scanId },
+          data: {
+            status: "failed",
+            statusResult: "blocked",
+            failureReason: err.message,
+            completedAt: new Date(),
+          },
+        });
+        await this.updateProgress(
+          scanId,
+          "failed",
+          100,
+          `Scan failed: ${err.message}`,
+        );
+        // Emit scan.completed so downstream handlers (e.g., GitHubAppService)
+        // can post error commit statuses for PR-triggered scans that failed/timed out.
+        this.eventEmitter.emit("scan.completed", { scanId });
+      }).finally(() => {
+        this.removeScanDir(scanDir);
+      });
+    }
+
+    return this.executeProcessing(scanId, scanDir).catch(async (err: any) => {
+      this.logger.error(`Scan pipeline crashed: ${err.message}`, err.stack);
+      await this.prisma.scanJob.update({
+        where: { id: scanId },
+        data: {
+          status: "failed",
+          statusResult: "blocked",
+          failureReason: err.message,
+          completedAt: new Date(),
+        },
+      });
+      await this.updateProgress(
+        scanId,
+        "failed",
+        100,
+        `Scan failed: ${err.message}`,
+      );
+      // Emit scan.completed so downstream handlers (e.g., GitHubAppService)
+      // can post error commit statuses for PR-triggered scans that failed/timed out.
+      this.eventEmitter.emit("scan.completed", { scanId });
+    }).finally(() => {
+      this.removeScanDir(scanDir);
+    });
+  }
+
+  private async executeProcessing(scanId: string, scanDir: string): Promise<any> {
       // 1. Stage: FETCHING
       await this.updateProgress(
         scanId,
@@ -82,16 +145,17 @@ export class ScanProcessor extends WorkerHost {
         40,
         "Executing static analysis security scanners...",
       );
-      const staticFindings = await this.orchestrator.runAll({
-        scanDir,
-        files: capFiles(
-          classified
-            .filter((f) => f.fileType !== "dependency")
-            .map((f) => f.path),
-          maxAnalyzeFiles(),
-        ),
-        scanId,
-      });
+      const { findings: staticFindings, coverage: analyzerCoverage } =
+        await this.orchestrator.runAll({
+          scanDir,
+          files: capFiles(
+            classified
+              .filter((f) => f.fileType !== "dependency")
+              .map((f) => f.path),
+            maxAnalyzeFiles(),
+          ),
+          scanId,
+        });
 
       // 4. Stage: AI-REVIEWING
       await this.updateProgress(
@@ -224,6 +288,7 @@ export class ScanProcessor extends WorkerHost {
           aiSummary,
           refactorPlan,
           recommendedTests,
+          analyzerCoverage: analyzerCoverage as any,
           completedAt: new Date(),
         },
       });
@@ -264,32 +329,25 @@ export class ScanProcessor extends WorkerHost {
         100,
         "Scan completed successfully.",
       );
+      this.eventEmitter.emit("scan.completed", { scanId });
       this.logger.log(`Scan job completed: ${scanId}`);
+  }
 
-      // Clean up directory
-      if (fs.existsSync(scanDir)) {
-        fs.rmSync(scanDir, { recursive: true, force: true });
-      }
-    } catch (err: any) {
-      this.logger.error(`Scan pipeline crashed: ${err.message}`, err.stack);
-      await this.prisma.scanJob.update({
-        where: { id: scanId },
-        data: {
-          status: "failed",
-          statusResult: "blocked",
-          failureReason: err.message,
-          completedAt: new Date(),
-        },
-      });
-      await this.updateProgress(
-        scanId,
-        "failed",
-        100,
-        `Scan failed: ${err.message}`,
+  /**
+   * Best-effort removal of a Scan_Directory and its temporary contents.
+   * Cleanup failures are logged but never rethrown so they cannot mask the
+   * scan's real terminal outcome (Req 4.10, 4.10a).
+   */
+  private removeScanDir(scanDir: string): void {
+    if (!scanDir || !fs.existsSync(scanDir)) {
+      return;
+    }
+    try {
+      fs.rmSync(scanDir, { recursive: true, force: true });
+    } catch (cleanupErr: any) {
+      this.logger.warn(
+        `Failed to remove scan directory ${scanDir}: ${cleanupErr?.message ?? cleanupErr}`,
       );
-      if (fs.existsSync(scanDir)) {
-        fs.rmSync(scanDir, { recursive: true, force: true });
-      }
     }
   }
 

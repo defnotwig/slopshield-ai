@@ -179,7 +179,7 @@ describe("GitHub ingestion -> classification -> scanning integration (fixture ta
     expect(context.scanDir).toBe(scanDir);
     expect(context.files.length).toBeGreaterThan(0);
 
-    const findings = await orchestrator.runAll(context);
+    const { findings } = await orchestrator.runAll(context);
     expect(Array.isArray(findings)).toBe(true);
 
     // The hardcoded secret must surface as a security finding.

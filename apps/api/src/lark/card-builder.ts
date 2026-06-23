@@ -93,6 +93,7 @@ export class LarkCardBuilder {
                 content: "View Full Report",
               },
               type: "primary",
+              url: summary.reportUrl,
               value: {
                 action: "view-report",
                 scanId: summary.scanId,
@@ -196,6 +197,7 @@ export class LarkCardBuilder {
                 content: "View Full Report",
               },
               type: "danger",
+              url: summary.reportUrl,
               value: {
                 action: "view-report",
                 scanId: summary.scanId,

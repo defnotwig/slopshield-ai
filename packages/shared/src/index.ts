@@ -5,6 +5,8 @@ export * from "./schemas/ai-review.schema.js";
 export * from "./schemas/rule.schema.js";
 export * from "./schemas/score.schema.js";
 export * from "./schemas/lark.schema.js";
+export * from "./schemas/readiness.schema.js";
+export * from "./schemas/dashboard.schema.js";
 
 // Constants
 export * from "./constants/severity.js";
