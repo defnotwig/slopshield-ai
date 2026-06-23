@@ -109,7 +109,6 @@ const scenarioArb: fc.Arbitrary<Scenario> = fc.record({
 });
 
 function callClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   apiClient: any,
   method: Scenario["method"],
   path: string,
