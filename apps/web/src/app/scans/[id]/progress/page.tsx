@@ -15,6 +15,11 @@ export default function ScanProgressPage() {
   const { data: scan, isLoading, isError, refetch } = useScan(scanId);
   const { progress, status } = useScanProgress(scanId, scan?.status);
 
+  const failureMessage =
+    scan?.failureReason && scan.failureReason.trim().length > 0
+      ? scan.failureReason
+      : "The scan could not be completed. Please try again.";
+
   // If the scan was already completed before loading this page, redirect directly to report
   useEffect(() => {
     if (scan && scan.status === "completed") {
@@ -109,7 +114,7 @@ export default function ScanProgressPage() {
           <div>
             <p className="font-bold">Scan Execution Blocked</p>
             <p className="text-muted-foreground mt-0.5">
-              The scan pipeline crashed. Check api logs or verify file formats.
+              {failureMessage}
             </p>
           </div>
         </div>

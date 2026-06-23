@@ -18,6 +18,26 @@ export interface GitHubIngestionConfig {
   fetchMechanism: "tarball";
 }
 
+/** Default maximum repository size in bytes (250 MB). */
+const DEFAULT_MAX_REPO_BYTES = 262_144_000;
+/** Minimum permitted maximum repository size in bytes (1 MB). */
+const MIN_MAX_REPO_BYTES = 1_048_576;
+
+/**
+ * Parse the MAX_REPO_BYTES env value into a validated byte cap.
+ *
+ * Falls back to {@link DEFAULT_MAX_REPO_BYTES} when the value is missing,
+ * not an integer, or below {@link MIN_MAX_REPO_BYTES}.
+ */
+export function parseMaxRepoBytes(raw: string | undefined): number {
+  if (raw === undefined) return DEFAULT_MAX_REPO_BYTES;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < MIN_MAX_REPO_BYTES) {
+    return DEFAULT_MAX_REPO_BYTES;
+  }
+  return value;
+}
+
 /**
  * Load the GitHub ingestion configuration from the environment.
  *
@@ -34,7 +54,7 @@ export function loadGitHubIngestionConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): GitHubIngestionConfig {
   return {
-    maxRepoBytes: Number(env.MAX_REPO_BYTES ?? 100 * 1024 * 1024), // 100 MB
+    maxRepoBytes: parseMaxRepoBytes(env.MAX_REPO_BYTES),
     maxFileCount: Number(env.MAX_FILE_COUNT ?? 5000), // 5000 files
     fetchTimeoutMs: Number(env.FETCH_TIMEOUT_MS ?? 60_000), // 60 s
     githubToken: env.GITHUB_TOKEN || undefined,

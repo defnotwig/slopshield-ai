@@ -294,6 +294,7 @@ export class GitHubIngestionService {
     // Wrap the web stream and enforce MAX_REPO_BYTES while data flows.
     let received = 0;
     const max = this.config.maxRepoBytes;
+    const maxMb = Math.floor(max / (1024 * 1024));
     const source = Readable.fromWeb(res.body as any);
     const capped = new Transform({
       transform(chunk, _enc, cb) {
@@ -302,7 +303,7 @@ export class GitHubIngestionService {
           cb(
             new GitHubIngestionError(
               "too-large",
-              "Repository exceeds the maximum allowed size.",
+              `Repository exceeds the configured size limit of ${maxMb} MB.`,
             ),
           ); // Req 3.2
           return;

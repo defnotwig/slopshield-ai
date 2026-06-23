@@ -8,6 +8,11 @@ import { SOURCE_TYPE } from "@slopshield/shared";
 import { useProjects } from "@/hooks/use-projects";
 import { useCreateScan } from "@/hooks/use-scans";
 import {
+  useConnectedAccounts,
+  isGitHubConnected,
+  useGitHubRepos,
+} from "@/hooks/use-oauth";
+import {
   Terminal,
   Upload,
   Link2,
@@ -16,6 +21,7 @@ import {
   AlertTriangle,
   Play,
   HelpCircle,
+  Github,
 } from "lucide-react";
 
 export default function NewScanPage() {
@@ -38,8 +44,21 @@ export default function NewScanPage() {
   const [file, setFile] = useState<File | null>(null);
   const [sourceRef, setSourceRef] = useState<string>("");
   const [demoSampleId, setDemoSampleId] = useState<string>("bad-frontend");
+  const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null);
+
+  const { data: connectedAccounts, isLoading: accountsLoading } =
+    useConnectedAccounts();
+  const githubConnected = isGitHubConnected(connectedAccounts);
+  const {
+    data: repos,
+    isLoading: reposLoading,
+    error: reposError,
+  } = useGitHubRepos(githubConnected);
 
   const [err, setErr] = useState<string>("");
+
+  const visibilityLabel = (isPrivate: boolean) =>
+    isPrivate ? "Private" : "Public";
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -79,7 +98,7 @@ export default function NewScanPage() {
         body = formData;
       } else if (activeTab === "repo") {
         if (!sourceRef.trim()) {
-          throw new Error("Please provide a repository URL.");
+          throw new Error("Please select a repository or provide a URL.");
         }
         body = {
           projectId: projectId || undefined,
@@ -236,6 +255,74 @@ export default function NewScanPage() {
               {/* Tab: Git Repo */}
               {activeTab === "repo" && (
                 <div className="space-y-4 max-w-md mx-auto">
+                  {/* Connected GitHub repo picker */}
+                  {accountsLoading && (
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                      Checking GitHub connection...
+                    </p>
+                  )}
+
+                  {githubConnected && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                        <Github className="w-3.5 h-3.5" />
+                        Your Repositories
+                      </span>
+
+                      {reposLoading && (
+                        <p className="text-xs text-muted-foreground">
+                          Loading repositories...
+                        </p>
+                      )}
+
+                      {reposError && (
+                        <p className="text-xs text-destructive">
+                          {reposError.message}
+                        </p>
+                      )}
+
+                      {!reposLoading &&
+                        !reposError &&
+                        repos &&
+                        repos.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            No repositories found
+                          </p>
+                        )}
+
+                      {!reposLoading &&
+                        !reposError &&
+                        repos &&
+                        repos.length > 0 && (
+                          <div className="max-h-[200px] overflow-y-auto border border-border rounded-sm divide-y divide-border">
+                            {repos.map((repo) => (
+                              <button
+                                key={repo.id}
+                                type="button"
+                                aria-pressed={selectedRepoId === repo.id}
+                                onClick={() => {
+                                  setSelectedRepoId(repo.id);
+                                  setSourceRef(repo.html_url);
+                                }}
+                                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition-all ${
+                                  selectedRepoId === repo.id
+                                    ? "border-l-2 border-ring bg-ring/5 text-foreground"
+                                    : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                                }`}
+                              >
+                                <span className="truncate font-mono text-xs">
+                                  {repo.full_name}
+                                </span>
+                                <span className="shrink-0 text-[9px] font-mono uppercase bg-muted border border-border text-muted-foreground px-2 py-0.5 rounded-sm">
+                                  {visibilityLabel(repo.private)}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  )}
+
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
                     Repository HTTPs URL
                   </span>
@@ -245,7 +332,10 @@ export default function NewScanPage() {
                       type="text"
                       placeholder="https://github.com/org/repo.git"
                       value={sourceRef}
-                      onChange={(e) => setSourceRef(e.target.value)}
+                      onChange={(e) => {
+                        setSourceRef(e.target.value);
+                        setSelectedRepoId(null);
+                      }}
                       className="w-full pl-10 pr-4 py-2.5 text-sm rounded-sm border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring transition-all"
                     />
                   </div>
