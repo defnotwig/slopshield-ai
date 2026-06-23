@@ -2,14 +2,25 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLogin } from "@/hooks/use-auth";
-import { ShieldAlert, KeyRound, Mail, Loader2 } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
+import {
+  ShieldAlert,
+  KeyRound,
+  Mail,
+  Loader2,
+  MessageSquare,
+} from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [larkLoading, setLarkLoading] = useState(false);
   const loginMutation = useLogin();
+  const searchParams = useSearchParams();
+  const oauthError = searchParams.get("error");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +34,20 @@ export default function LoginPage() {
       await loginMutation.mutateAsync({ email, password });
     } catch (e: any) {
       setErr(e.message || "Invalid email or password.");
+    }
+  };
+
+  const handleLarkLogin = async () => {
+    setErr("");
+    setLarkLoading(true);
+    try {
+      const response = await apiClient.get<{ url: string }>(
+        "/oauth/lark/login",
+      );
+      globalThis.window.location.assign(response.url);
+    } catch (e: any) {
+      setErr(e.message || "Failed to initiate Lark login.");
+      setLarkLoading(false);
     }
   };
 
@@ -41,6 +66,12 @@ export default function LoginPage() {
             Authenticate to audit your codebase pipeline quality.
           </p>
         </div>
+
+        {oauthError && (
+          <div className="p-3.5 rounded-sm bg-destructive/10 border border-destructive/20 text-xs font-semibold text-destructive text-center animate-shake">
+            Lark authentication failed. Please try again.
+          </div>
+        )}
 
         {err && (
           <div className="p-3.5 rounded-sm bg-destructive/10 border border-destructive/20 text-xs font-semibold text-destructive text-center animate-shake">
@@ -94,6 +125,30 @@ export default function LoginPage() {
             Sign In
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            or
+          </span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {/* Lark OAuth Button */}
+        <button
+          type="button"
+          onClick={handleLarkLogin}
+          disabled={larkLoading}
+          className="w-full py-3 font-bold rounded-sm border border-border bg-transparent text-foreground hover:bg-muted disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-2"
+        >
+          {larkLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <MessageSquare className="w-4 h-4" />
+          )}
+          Sign in with Lark
+        </button>
 
         <div className="text-center text-xs text-muted-foreground">
           Don&apos;t have an account?{" "}

@@ -7,7 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
 import * as jwt from "jsonwebtoken";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
@@ -250,6 +250,61 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
 
+    return this.issueTokens(user);
+  }
+
+  /**
+   * Find or create a SlopShield user from a Lark identity.
+   * Matches by larkUserId first, then by email (backfills larkUserId), else creates a new user.
+   */
+  public async findOrCreateLarkUser(identity: {
+    larkUserId: string;
+    email?: string;
+    name: string;
+  }): Promise<any> {
+    // Try match by larkUserId
+    let user = await this.prisma.user.findFirst({
+      where: { larkUserId: identity.larkUserId },
+    });
+    if (user) return user;
+
+    // Try match by email (if provided)
+    if (identity.email) {
+      user = await this.prisma.user.findUnique({
+        where: { email: identity.email },
+      });
+      if (user) {
+        // Backfill larkUserId
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { larkUserId: identity.larkUserId },
+        });
+        return user;
+      }
+    }
+
+    // Create new user with random unusable password
+    const randomPassword = randomBytes(32).toString("hex");
+    const hashedPassword = await argon2.hash(randomPassword);
+    user = await this.prisma.user.create({
+      data: {
+        name: identity.name,
+        email:
+          identity.email || `lark_${identity.larkUserId}@slopshield.local`,
+        password: hashedPassword,
+        role: "developer",
+        larkUserId: identity.larkUserId,
+      },
+    });
+    return user;
+  }
+
+  /**
+   * Issue tokens for a given user. Used by Lark login flow.
+   */
+  public async loginWithUser(
+    user: any,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     return this.issueTokens(user);
   }
 

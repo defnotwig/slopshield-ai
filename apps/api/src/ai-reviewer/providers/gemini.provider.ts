@@ -13,6 +13,15 @@ import {
 import { AI_REVIEWER_SYSTEM_PROMPT } from "../prompts/system-prompt.js";
 import { redactSecrets } from "../../scan/secret-redactor.js";
 
+/**
+ * Resolve the Gemini model identifier from the GEMINI_MODEL env value.
+ * Returns the cost-effective free-tier flash default when absent/blank/whitespace.
+ */
+export function resolveGeminiModel(raw: string | undefined): string {
+  const trimmed = raw?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : 'gemini-2.5-flash';
+}
+
 @Injectable()
 export class GeminiProvider implements AIReviewerProvider {
   private readonly logger = new Logger(GeminiProvider.name);
@@ -21,10 +30,7 @@ export class GeminiProvider implements AIReviewerProvider {
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>("GEMINI_API_KEY");
-    this.modelName = this.configService.get<string>(
-      "GEMINI_MODEL",
-      "gemini-2.5-pro",
-    );
+    this.modelName = resolveGeminiModel(this.configService.get<string>("GEMINI_MODEL"));
 
     if (apiKey) {
       this.ai = new GoogleGenAI({ apiKey });
@@ -36,6 +42,7 @@ export class GeminiProvider implements AIReviewerProvider {
         "GEMINI_API_KEY is not defined. AI Reviewer will operate in mock mode.",
       );
     }
+    this.logger.log(`Resolved GEMINI_MODEL: ${this.modelName}`);
   }
 
   public async reviewCode(input: ReviewInput): Promise<AIReviewResult> {

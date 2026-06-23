@@ -1,6 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Finding, AIReviewResult } from "@slopshield/shared";
-import { GeminiProvider } from "./providers/gemini.provider.js";
+import { AIReviewerProvider } from "./interfaces/ai-reviewer-provider.interface.js";
+import { AI_REVIEWER_PROVIDER } from "./ai-reviewer.constants.js";
 import { StandardsMapper } from "../rules/standards-mapper.js";
 
 @Injectable()
@@ -8,7 +9,7 @@ export class AIReviewerService {
   private readonly logger = new Logger(AIReviewerService.name);
 
   constructor(
-    private readonly provider: GeminiProvider,
+    @Inject(AI_REVIEWER_PROVIDER) private readonly provider: AIReviewerProvider,
     private readonly standardsMapper: StandardsMapper,
   ) {}
 

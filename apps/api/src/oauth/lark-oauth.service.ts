@@ -27,7 +27,23 @@ interface LarkTokenData {
 interface LarkUserInfoData {
   open_id: string;
   name: string;
+  email?: string;
 }
+
+/** State store entry for the settings OAuth flow (user already authenticated). */
+interface SettingsStateEntry {
+  userId: string;
+  expiresAt: number;
+}
+
+/** State store entry for the login OAuth flow (user not yet authenticated). */
+interface LoginStateEntry {
+  mode: 'login';
+  expiresAt: number;
+}
+
+/** Union type for all state store entries. */
+type StateEntry = SettingsStateEntry | LoginStateEntry;
 
 /**
  * LarkOAuthService implements the OAuth 2.0 authorization code flow with Lark
@@ -46,13 +62,10 @@ export class LarkOAuthService {
 
   /**
    * In-memory state store for OAuth CSRF state parameters.
-   * Maps state → { userId, expiresAt }.
+   * Maps state → StateEntry (either settings-flow or login-flow).
    * In production with Redis available, this should be replaced with Redis-backed storage.
    */
-  private readonly stateStore = new Map<
-    string,
-    { userId: string; expiresAt: number }
-  >();
+  private readonly stateStore = new Map<string, StateEntry>();
 
   /** TTL for OAuth state parameters (10 minutes). */
   private readonly STATE_TTL_MS = 10 * 60 * 1000;
@@ -121,6 +134,14 @@ export class LarkOAuthService {
       this.stateStore.delete(state);
       throw new UnauthorizedException(
         'Invalid or expired OAuth state parameter',
+      );
+    }
+
+    // Ensure this is a settings-flow state (has userId, not login mode)
+    if ('mode' in stored) {
+      this.stateStore.delete(state);
+      throw new UnauthorizedException(
+        'Invalid OAuth state: expected settings flow',
       );
     }
 
@@ -241,6 +262,80 @@ export class LarkOAuthService {
     await this.connectedAccountService.disconnect(userId, 'lark');
   }
 
+  /**
+   * Generate the Lark OAuth authorization URL for the login flow.
+   * No userId is needed since the user isn't authenticated yet.
+   * Creates a CSRF state parameter stored with a 10-minute TTL in login mode.
+   */
+  getLoginAuthorizationUrl(): { url: string; state: string } {
+    const state = randomBytes(32).toString('hex');
+
+    // Store state with TTL in login mode
+    this.stateStore.set(state, {
+      mode: 'login',
+      expiresAt: Date.now() + this.STATE_TTL_MS,
+    });
+
+    // Clean up expired entries periodically
+    this.cleanupExpiredStates();
+
+    const url =
+      `https://open.larksuite.com/open-apis/authen/v1/authorize` +
+      `?app_id=${this.appId}` +
+      `&redirect_uri=${encodeURIComponent(this.callbackUrl)}` +
+      `&state=${state}`;
+
+    return { url, state };
+  }
+
+  /**
+   * Handle the OAuth callback from Lark for the login flow.
+   * Validates state (must be login-mode), exchanges code for tokens,
+   * fetches user info, and returns the Lark identity.
+   * Does NOT create a ConnectedAccount (that's for the settings flow).
+   */
+  async handleLoginCallback(
+    code: string,
+    state: string,
+  ): Promise<{ larkUserId: string; email?: string; name: string }> {
+    // Validate state parameter (CSRF protection)
+    const stored = this.stateStore.get(state);
+    if (!stored || stored.expiresAt < Date.now()) {
+      this.stateStore.delete(state);
+      throw new UnauthorizedException(
+        'Invalid or expired OAuth state parameter',
+      );
+    }
+
+    // Ensure this is a login-flow state
+    if (!('mode' in stored) || stored.mode !== 'login') {
+      this.stateStore.delete(state);
+      throw new UnauthorizedException(
+        'Invalid OAuth state: expected login flow',
+      );
+    }
+
+    this.stateStore.delete(state);
+
+    // Step 1: Get app access token
+    const appAccessToken = await this.getAppAccessToken();
+
+    // Step 2: Exchange authorization code for user access tokens
+    const tokenResponse = await this.exchangeCodeForTokens(
+      code,
+      appAccessToken,
+    );
+
+    // Step 3: Fetch user identity
+    const userInfo = await this.fetchUserInfo(tokenResponse.access_token);
+
+    return {
+      larkUserId: userInfo.open_id,
+      email: userInfo.email,
+      name: userInfo.name,
+    };
+  }
+
   // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
@@ -318,10 +413,11 @@ export class LarkOAuthService {
 
   /**
    * Fetch the Lark user identity using an access token.
+   * Returns email when provided by Lark.
    */
   private async fetchUserInfo(
     accessToken: string,
-  ): Promise<{ open_id: string; name: string }> {
+  ): Promise<{ open_id: string; name: string; email?: string }> {
     const response = await fetch(
       'https://open.larksuite.com/open-apis/authen/v1/user_info',
       {
@@ -345,6 +441,7 @@ export class LarkOAuthService {
     return {
       open_id: userInfo.open_id,
       name: userInfo.name,
+      email: userInfo.email,
     };
   }
 
