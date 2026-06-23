@@ -80,8 +80,8 @@ function buildPrismaFake(): {
     refreshToken: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const created: RefreshTokenRow = {
-          revokedAt: null,
           ...(data as unknown as RefreshTokenRow),
+          revokedAt: (data as any).revokedAt ?? null,
         };
         refreshTokens.push(created);
         return created;

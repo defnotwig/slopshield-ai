@@ -109,6 +109,7 @@ export class ScannerOrchestrator implements OnModuleInit {
         return {
           analyzerName: analyzer.name,
           success: false,
+          skipped: false,
           findings: [],
           error: err.message || String(err),
           durationMs: 0,

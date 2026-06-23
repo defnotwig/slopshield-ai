@@ -173,7 +173,7 @@ function makeFinding(secretSnippet: string): Finding {
     id: "f1",
     scanId: "scan-1",
     severity: "high",
-    category: "security",
+    category: "backend-security",
     title: `Hardcoded credential ${secretSnippet}`,
     file: "src/config.ts",
     line: 12,
@@ -182,7 +182,7 @@ function makeFinding(secretSnippet: string): Finding {
     recommendation: `Remove ${secretSnippet} and rotate it.`,
     blocking: true,
     confidence: 0.9,
-    source: "secret",
+    source: "secret-scanner",
   };
 }
 
