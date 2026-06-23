@@ -2,6 +2,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Query,
   Req,
   Res,
@@ -17,6 +18,8 @@ import { ConnectedAccountService } from './connected-account.service.js';
 
 @Controller('oauth')
 export class OAuthController {
+  private readonly logger = new Logger(OAuthController.name);
+
   constructor(
     private readonly githubOAuthService: GitHubOAuthService,
     private readonly larkOAuthService: LarkOAuthService,
@@ -118,6 +121,25 @@ export class OAuthController {
       );
       const user = await this.authService.findOrCreateLarkUser(identity);
       const tokens = await this.authService.loginWithUser(user);
+
+      // Best-effort: auto-create ConnectedAccount so profile shows "Connected"
+      try {
+        await this.connectedAccountService.upsert({
+          userId: user.id,
+          provider: 'lark',
+          providerAccountId: identity.larkUserId,
+          accessToken: identity.accessToken,
+          refreshToken: identity.refreshToken,
+          tokenExpiresAt: identity.tokenExpiresAt,
+          displayName: identity.name,
+        });
+      } catch (caError) {
+        // Non-blocking — login succeeds even if ConnectedAccount creation fails
+        this.logger.warn(
+          `Failed to auto-create Lark ConnectedAccount: ${caError}`,
+        );
+      }
+
       res.redirect(
         `${frontendUrl}/auth/lark/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`,
       );

@@ -23,6 +23,7 @@ export class PrismaService
 
   constructor() {
     super({
+      datasourceUrl: process.env.DATABASE_URL,
       log: [
         { emit: "event", level: "query" },
         { emit: "stdout", level: "info" },
@@ -38,6 +39,13 @@ export class PrismaService
    */
   async onModuleInit(): Promise<void> {
     this.logger.log("Connecting to PostgreSQL via Prisma…");
+
+    // Log connection errors for observability (Neon drops idle connections)
+    // @ts-expect-error — Prisma $on('error') requires generated client types
+    this.$on("error", (event: unknown) => {
+      this.logger.warn(`Prisma connection event: ${JSON.stringify(event)}`);
+    });
+
     try {
       await this.$connect();
       this.logger.log("PostgreSQL connection established.");
@@ -46,7 +54,7 @@ export class PrismaService
       // which contains host and credentials. Only the error message is logged.
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to connect to PostgreSQL via Prisma. Verify DATABASE_URL is reachable and credentials are valid. Cause: ${message}`,
+        `Failed to connect to PostgreSQL. Verify DATABASE_URL includes required Neon params: ?pgbouncer=true&connect_timeout=15&pool_timeout=15&connection_limit=5. Cause: ${message}`,
       );
       // Re-throw so Nest aborts boot (existing fail-fast behavior).
       throw error;

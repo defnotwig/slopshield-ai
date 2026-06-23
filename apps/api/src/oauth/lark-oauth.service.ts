@@ -30,6 +30,16 @@ interface LarkUserInfoData {
   email?: string;
 }
 
+/** Result of a Lark login OAuth callback, including identity and tokens. */
+export interface LarkLoginResult {
+  larkUserId: string;
+  email?: string;
+  name: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiresAt?: Date;
+}
+
 /** State store entry for the settings OAuth flow (user already authenticated). */
 interface SettingsStateEntry {
   userId: string;
@@ -297,7 +307,7 @@ export class LarkOAuthService {
   async handleLoginCallback(
     code: string,
     state: string,
-  ): Promise<{ larkUserId: string; email?: string; name: string }> {
+  ): Promise<LarkLoginResult> {
     // Validate state parameter (CSRF protection)
     const stored = this.stateStore.get(state);
     if (!stored || stored.expiresAt < Date.now()) {
@@ -333,6 +343,11 @@ export class LarkOAuthService {
       larkUserId: userInfo.open_id,
       email: userInfo.email,
       name: userInfo.name,
+      accessToken: tokenResponse.access_token,
+      refreshToken: tokenResponse.refresh_token,
+      tokenExpiresAt: tokenResponse.expires_in
+        ? new Date(Date.now() + tokenResponse.expires_in * 1000)
+        : undefined,
     };
   }
 

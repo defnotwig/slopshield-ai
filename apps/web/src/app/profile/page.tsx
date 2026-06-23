@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useMe } from "@/hooks/use-auth";
 import { apiClient } from "@/lib/api-client";
+import { isSyntheticEmail } from "@/lib/user-utils";
 import {
   User,
   Mail,
@@ -193,7 +194,7 @@ export default function ProfilePage() {
             <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
             <div>
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Email</p>
-              <p className="text-sm font-medium text-foreground">{user.email}</p>
+              <p className="text-sm font-medium text-foreground">{isSyntheticEmail(user?.email) ? "—" : user.email}</p>
             </div>
           </div>
 

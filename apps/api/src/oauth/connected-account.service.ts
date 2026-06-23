@@ -16,6 +16,20 @@ export interface CreateConnectedAccountInput {
 }
 
 /**
+ * Input shape for upserting a Connected Account record.
+ * Creates if not exists, updates tokens and metadata if it does.
+ */
+export interface UpsertConnectedAccountInput {
+  userId: string;
+  provider: string;
+  providerAccountId: string;
+  accessToken: string;
+  refreshToken?: string;
+  tokenExpiresAt?: Date;
+  displayName: string;
+}
+
+/**
  * Display-safe shape returned by findAllByUser — never exposes tokens.
  */
 export interface ConnectedAccountDisplay {
@@ -41,6 +55,40 @@ export class ConnectedAccountService {
 
     return this.prisma.connectedAccount.create({
       data: {
+        userId: data.userId,
+        provider: data.provider,
+        providerAccountId: data.providerAccountId,
+        accessToken: encryptedAccessToken,
+        refreshToken: encryptedRefreshToken,
+        tokenExpiresAt: data.tokenExpiresAt,
+        displayName: data.displayName,
+      },
+    });
+  }
+
+  /**
+   * Create or update a connected account for a user+provider pair.
+   * Encrypts tokens before storing. On update, refreshes tokens, displayName, and sets status to 'connected'.
+   */
+  async upsert(data: UpsertConnectedAccountInput) {
+    const encryptedAccessToken = encrypt(data.accessToken);
+    const encryptedRefreshToken = data.refreshToken
+      ? encrypt(data.refreshToken)
+      : null;
+
+    return this.prisma.connectedAccount.upsert({
+      where: {
+        userId_provider: { userId: data.userId, provider: data.provider },
+      },
+      update: {
+        providerAccountId: data.providerAccountId,
+        accessToken: encryptedAccessToken,
+        refreshToken: encryptedRefreshToken,
+        tokenExpiresAt: data.tokenExpiresAt,
+        displayName: data.displayName,
+        status: 'connected',
+      },
+      create: {
         userId: data.userId,
         provider: data.provider,
         providerAccountId: data.providerAccountId,

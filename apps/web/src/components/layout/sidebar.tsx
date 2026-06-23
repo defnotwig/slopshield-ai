@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useMe, useLogout } from "@/hooks/use-auth";
+import { isSyntheticEmail } from "@/lib/user-utils";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -30,8 +31,11 @@ export function Sidebar() {
     { name: "Settings", href: "/profile", icon: Settings },
   ];
 
-  const displayName = user?.name || user?.email || "User";
-  const displayEmail = user?.email || "";
+  const hasSyntheticEmail = isSyntheticEmail(user?.email);
+  const displayName = hasSyntheticEmail
+    ? user?.name || "User"
+    : user?.name || user?.email || "User";
+  const displayEmail = hasSyntheticEmail ? "" : user?.email || "";
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
