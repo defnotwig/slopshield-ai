@@ -319,12 +319,7 @@ export class ScanService {
         safeExtractArchive(entries, scanDir, this.extractLimits);
       } else if (input.sourceType === "demo-sample") {
         const demoId = input.demoSampleId || "";
-        const demoDir = path.join(process.cwd(), "demo-samples", demoId);
-        if (!fs.existsSync(demoDir)) {
-          throw new BadRequestException(
-            `Demo sample folder ${demoId} not found`,
-          );
-        }
+        const demoDir = this.resolveDemoSampleDir(demoId);
         this.copyFolderSync(demoDir, scanDir);
       } else if (input.sourceType === "repository") {
         // Fetch + extract the repository tarball into scanDir. Synchronous
@@ -535,6 +530,34 @@ export class ScanService {
         size: zipEntry.header.size,
       };
     });
+  }
+
+  /**
+   * Resolve the demo samples directory for a given demo ID. Tries multiple
+   * candidate paths to support both production (dist output) and development
+   * (monorepo root or apps/api directly) environments.
+   *
+   * @throws BadRequestException if none of the candidate paths exist.
+   */
+  private resolveDemoSampleDir(demoId: string): string {
+    const candidates = [
+      // 1. Relative to compiled dist output (production)
+      path.join(__dirname, "../../demo-samples", demoId),
+      // 2. Monorepo root with apps/api prefix (dev or production at repo root)
+      path.join(process.cwd(), "apps/api/demo-samples", demoId),
+      // 3. Run directly from apps/api directory
+      path.join(process.cwd(), "demo-samples", demoId),
+    ];
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    throw new BadRequestException(
+      `Demo sample folder ${demoId} not found`,
+    );
   }
 
   private copyFolderSync(from: string, to: string): void {

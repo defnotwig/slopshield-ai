@@ -50,6 +50,20 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: GITHUB_OAUTH_CLIENT_ID
+        sync: false
+      - key: GITHUB_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_OAUTH_CALLBACK_URL
+        sync: false
+      - key: LARK_OAUTH_APP_ID
+        sync: false
+      - key: LARK_OAUTH_APP_SECRET
+        sync: false
+      - key: LARK_OAUTH_CALLBACK_URL
+        sync: false
+      - key: OAUTH_ENCRYPTION_KEY
+        sync: false
       - key: ANALYZER_TIMEOUT_MS
         value: "45000"
       - key: MAX_ANALYZE_FILES

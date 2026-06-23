@@ -142,9 +142,24 @@ describe("useLogout token clearing", () => {
   it("removes both the access and refresh tokens on logout", async () => {
     localStorage.setItem(ACCESS_TOKEN_KEY, "access-abc");
     localStorage.setItem(REFRESH_TOKEN_KEY, "refresh-xyz");
+    postMock.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useLogout(), { wrapper });
-    result.current();
+    await result.current();
+
+    expect(localStorage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
+    expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
+    expect(pushMock).toHaveBeenCalledWith("/auth/login");
+  });
+
+  // _Requirements: 1.5_ logout clears tokens even on network failure
+  it("clears tokens and redirects even when the logout API call fails", async () => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, "access-abc");
+    localStorage.setItem(REFRESH_TOKEN_KEY, "refresh-xyz");
+    postMock.mockRejectedValue(new Error("Network error"));
+
+    const { result } = renderHook(() => useLogout(), { wrapper });
+    await result.current();
 
     expect(localStorage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
     expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();

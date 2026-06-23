@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Req } from "@nestjs/common";
+import { Controller, Post, Get, Put, Body, UseGuards, Req } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { AuthService } from "./auth.service.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
@@ -8,6 +8,7 @@ import {
   THROTTLER_NAMES,
   resolveLoginThrottle,
 } from "../common/throttler.config.js";
+import { ChangePasswordBody } from "./dto/change-password.dto.js";
 
 @Controller("auth")
 export class AuthController {
@@ -53,5 +54,18 @@ export class AuthController {
   @Get("me")
   public async getMe(@Req() req: any): Promise<any> {
     return this.authService.getProfile(req.user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put("password")
+  public async changePassword(
+    @Req() req: any,
+    @Body() body: ChangePasswordBody,
+  ): Promise<any> {
+    return this.authService.changePassword(
+      req.user.sub,
+      body.currentPassword,
+      body.newPassword,
+    );
   }
 }

@@ -32,6 +32,7 @@ model User {
   memberships         ProjectMember[]
   notificationSetting NotificationSetting?
   refreshTokens       RefreshToken[]
+  connectedAccounts   ConnectedAccount[]
 
   @@map("users")
 }
@@ -329,4 +330,28 @@ model PrScanMetadata {
   @@index([repoFullName, prNumber])
   @@index([installationId])
   @@map("pr_scan_metadata")
+}
+
+
+// ---------------------------------------------------------------------------
+// ConnectedAccount — OAuth provider connections (GitHub, Lark) per user
+// ---------------------------------------------------------------------------
+model ConnectedAccount {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  provider          String    // "github" | "lark"
+  providerAccountId String    @map("provider_account_id")
+  accessToken       String    @map("access_token")
+  refreshToken      String?   @map("refresh_token")
+  tokenExpiresAt    DateTime? @map("token_expires_at")
+  displayName       String    @map("display_name")
+  status            String    @default("connected")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("connected_accounts")
 }

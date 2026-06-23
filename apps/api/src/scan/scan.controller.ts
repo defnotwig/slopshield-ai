@@ -10,8 +10,8 @@ import {
   UploadedFile,
   Req,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
+import { ConditionalFileInterceptor } from "./conditional-file.interceptor.js";
 import { ScanService } from "./scan.service.js";
 import { ReportService } from "../report/report.service.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
@@ -35,7 +35,7 @@ export class ScanController {
 
   @Post()
   @Throttle({ [THROTTLER_NAMES.default]: resolveScanThrottle() })
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(ConditionalFileInterceptor("file"))
   public async createScan(
     @Body() body: any,
     @Req() req: any,

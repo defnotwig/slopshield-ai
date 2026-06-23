@@ -14,9 +14,12 @@ import {
   LogOut,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useMe, useLogout } from "@/hooks/use-auth";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: user } = useMe();
+  const logout = useLogout();
 
   const links = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -24,8 +27,12 @@ export function Sidebar() {
     { name: "Scan History", href: "/scans", icon: Search },
     { name: "Projects", href: "/projects", icon: FolderOpen },
     { name: "Rules Library", href: "/rules", icon: BookOpen },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Settings", href: "/profile", icon: Settings },
   ];
+
+  const displayName = user?.name || user?.email || "User";
+  const displayEmail = user?.email || "";
+  const initials = displayName.charAt(0).toUpperCase();
 
   return (
     <aside className="w-64 fixed inset-y-0 left-0 z-20 flex flex-col border-r border-border bg-background">
@@ -68,21 +75,31 @@ export function Sidebar() {
       </nav>
 
       {/* Footer Controls */}
-      <div className="p-4 border-t border-border flex items-center justify-between gap-4 bg-muted/20">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-muted border border-border flex items-center justify-center text-foreground font-semibold text-xs uppercase">
-            U
+      <div className="p-4 border-t border-border space-y-3 bg-muted/20">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-sm bg-muted border border-border flex items-center justify-center text-foreground font-semibold text-xs uppercase">
+              {initials}
+            </div>
+            <div className="truncate w-24">
+              <p className="text-xs font-semibold text-foreground truncate">
+                {displayName}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {displayEmail}
+              </p>
+            </div>
           </div>
-          <div className="truncate w-24">
-            <p className="text-xs font-semibold text-foreground truncate">
-              Developer
-            </p>
-            <p className="text-[10px] text-muted-foreground truncate">
-              dev@example.com
-            </p>
-          </div>
+          <ThemeToggle />
         </div>
-        <ThemeToggle />
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-sm transition-colors"
+          aria-label="Log out"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Log out</span>
+        </button>
       </div>
     </aside>
   );

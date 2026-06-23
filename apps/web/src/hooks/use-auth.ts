@@ -94,11 +94,20 @@ export function useLogout() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  return () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    queryClient.setQueryData(["me"], null);
-    queryClient.clear();
-    router.push("/auth/login");
+  return async () => {
+    try {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        await apiClient.post("/auth/logout", { refreshToken });
+      }
+    } catch {
+      // Graceful degradation: still clear tokens and redirect on network failure
+    } finally {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      queryClient.setQueryData(["me"], null);
+      queryClient.clear();
+      router.push("/auth/login");
+    }
   };
 }

@@ -150,3 +150,59 @@ export function formatIntegrationSummary(
 ): string {
   return `Integrations: gemini=${report.gemini}, githubToken=${report.githubToken}, lark=${report.lark}, githubApp=${report.githubApp}`;
 }
+
+// ---------------------------------------------------------------------------
+// OAuth configuration (optional — Requirements 5.1, 6.1, 7.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Environment variables for the OAuth integrations.
+ * These are optional: the OAuth module gracefully degrades when they are absent.
+ */
+export const OAUTH_ENV_KEYS = {
+  GITHUB_OAUTH_CLIENT_ID: "GITHUB_OAUTH_CLIENT_ID",
+  GITHUB_OAUTH_CLIENT_SECRET: "GITHUB_OAUTH_CLIENT_SECRET",
+  GITHUB_OAUTH_CALLBACK_URL: "GITHUB_OAUTH_CALLBACK_URL",
+  LARK_OAUTH_APP_ID: "LARK_OAUTH_APP_ID",
+  LARK_OAUTH_APP_SECRET: "LARK_OAUTH_APP_SECRET",
+  LARK_OAUTH_CALLBACK_URL: "LARK_OAUTH_CALLBACK_URL",
+  OAUTH_ENCRYPTION_KEY: "OAUTH_ENCRYPTION_KEY",
+} as const;
+
+/**
+ * Returns true when GitHub OAuth is fully configured (client ID, secret, and
+ * callback URL are all present and non-blank).
+ */
+export function isGitHubOAuthConfigured(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return (
+    isConfigured(env.GITHUB_OAUTH_CLIENT_ID) &&
+    isConfigured(env.GITHUB_OAUTH_CLIENT_SECRET) &&
+    isConfigured(env.GITHUB_OAUTH_CALLBACK_URL)
+  );
+}
+
+/**
+ * Returns true when Lark OAuth is fully configured (app ID, secret, and
+ * callback URL are all present and non-blank).
+ */
+export function isLarkOAuthConfigured(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return (
+    isConfigured(env.LARK_OAUTH_APP_ID) &&
+    isConfigured(env.LARK_OAUTH_APP_SECRET) &&
+    isConfigured(env.LARK_OAUTH_CALLBACK_URL)
+  );
+}
+
+/**
+ * Returns true when the OAuth encryption key is configured (required for any
+ * OAuth token storage).
+ */
+export function isOAuthEncryptionConfigured(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return isConfigured(env.OAUTH_ENCRYPTION_KEY);
+}

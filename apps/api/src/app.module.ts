@@ -37,6 +37,7 @@ import { ReportModule } from "./report/report.module";
 import { NotificationModule } from "./notification/notification.module";
 import { HealthModule } from "./health/health.module.js";
 import { AuditModule } from "./audit/audit.module";
+import { OAuthModule } from "./oauth/oauth.module";
 import { GitHubAppModule } from "./github-app/github-app.module";
 import { isGitHubAppEnabled } from "./github-app/github-app.config";
 import {
@@ -118,6 +119,7 @@ import {
     ReportModule,
     NotificationModule,
     HealthModule,
+    OAuthModule,
 
     // -------------------------------------------------------------------------
     // GitHub App — conditionally registered when the feature is enabled and

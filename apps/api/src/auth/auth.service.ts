@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
@@ -210,6 +211,46 @@ export class AuthService {
     }
 
     return this.sanitizeUser(user);
+  }
+
+  /**
+   * Changes the user's password after verifying the current one (Req 8.2–8.6).
+   *
+   * Verifies currentPassword against the stored hash, updates the password,
+   * revokes all existing refresh tokens, and issues a fresh token pair so the
+   * user stays logged in on the current device.
+   */
+  public async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    const valid = await argon2.verify(user.password, currentPassword);
+    if (!valid) {
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+
+    const newHash = await argon2.hash(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: newHash },
+    });
+
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    return this.issueTokens(user);
   }
 
   /**
