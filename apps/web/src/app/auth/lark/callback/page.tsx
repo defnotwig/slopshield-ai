@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -9,6 +9,14 @@ const ACCESS_TOKEN_KEY = "slopshield_token";
 const REFRESH_TOKEN_KEY = "slopshield_refresh_token";
 
 export default function LarkCallbackPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-cyan-500" /></div>}>
+      <LarkCallbackContent />
+    </Suspense>
+  );
+}
+
+function LarkCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
