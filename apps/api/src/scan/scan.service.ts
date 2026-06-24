@@ -292,8 +292,11 @@ export class ScanService {
    * Shared ingestion + enqueue path used by both {@link createScan} and
    * {@link rerunScan}. Prepares the per-scan temporary directory for the given
    * source type, enqueues the BullMQ pipeline job, and returns the ScanJob.
-   * On ingestion failure the job is marked `failed`, its directory removed,
-   * and the error mapped to a meaningful HTTP status.
+   *
+   * For `repository` scans (which can take 30–90s to download a large tarball),
+   * ingestion runs in the BACKGROUND so the HTTP response returns immediately
+   * and the frontend can show the live progress screen instead of hanging on
+   * "Queuing Pipeline...". Fast local sources (paste/upload/demo) ingest inline.
    */
   private async prepareAndEnqueue(
     scanJob: { id: string },
@@ -303,37 +306,29 @@ export class ScanService {
     const scanDir = path.join(this.tempBaseDir, scanJob.id);
     fs.mkdirSync(scanDir, { recursive: true });
 
-    // Prepare files in scan directory
+    // Repository scans: return immediately and ingest in the background so the
+    // user is not blocked behind a long tarball download (root cause of the
+    // stuck "Queuing Pipeline..." screen). The job stays `queued` and the
+    // progress page polls/streams until the worker picks it up.
+    if (input.sourceType === "repository") {
+      void this.ingestRepositoryAndEnqueue(scanJob.id, input.sourceRef!, scanDir);
+      this.logger.log(`Accepted repository scan ${scanJob.id}; ingesting in background.`);
+      return scanJob;
+    }
+
+    // Fast local sources: prepare files synchronously then enqueue.
     try {
       if (input.sourceType === "paste") {
         const ext = input.scanMode === "frontend-only" ? ".tsx" : ".ts";
         const targetFile = path.join(scanDir, `pasted_code${ext}`);
         fs.writeFileSync(targetFile, input.sourceContent || "", "utf8");
       } else if (input.sourceType === "upload" && file) {
-        // Route the uploaded ZIP through the shared safe-extraction guard
-        // instead of AdmZip's unguarded extractAllTo, so the upload path gets
-        // the same per-entry path-confinement, symlink rejection, max-file-count
-        // and max-bytes protection as the GitHub tarball path (Req 4.7, 4.8,
-        // 4.8a, 4.11 — resolves audit B3). Any escaping entry fails the scan.
         const entries = this.zipToArchiveEntries(file.buffer);
         safeExtractArchive(entries, scanDir, this.extractLimits);
       } else if (input.sourceType === "demo-sample") {
         const demoId = input.demoSampleId || "";
         const demoDir = this.resolveDemoSampleDir(demoId);
         this.copyFolderSync(demoDir, scanDir);
-      } else if (input.sourceType === "repository") {
-        // Fetch + extract the repository tarball into scanDir. Synchronous
-        // validation already ran up-front; here only fetch/extract failures
-        // (not-found, private-no-token, too-large, too-many-files, timeout,
-        // network-error) can occur, and they mark the ScanJob as failed.
-        // The explicit ref arg is undefined: CreateScanInput has no separate
-        // ref field, so the ref is taken from the URL path by the ingest service.
-        await this.githubIngestion.ingest(
-          input.sourceRef!,
-          undefined,
-          scanJob.id,
-          scanDir,
-        );
       }
 
       // Add to BullMQ queue
@@ -356,16 +351,54 @@ export class ScanService {
           failureReason: err?.message ?? "Scan ingestion failed",
         },
       });
-      // Clean up directory if created (ingest may have already removed it).
       this.removeScanDir(scanJob.id);
-      // Map ingestion failures to meaningful HTTP statuses instead of a bare
-      // 500. Client-correctable problems (bad repo, private without a token)
-      // become 4xx; transient transport/size problems become 400 so the user
-      // can retry or pick a smaller repo.
       if (err instanceof GitHubIngestionError) {
         throw this.toHttpException(err);
       }
       throw err;
+    }
+  }
+
+  /**
+   * Background repository ingestion: fetches + extracts the tarball into
+   * `scanDir`, then enqueues the pipeline job. On any failure the ScanJob is
+   * marked `failed` with a meaningful `failureReason` so the progress page can
+   * surface it in real time. Never throws — this runs detached from the HTTP
+   * request (fire-and-forget).
+   */
+  private async ingestRepositoryAndEnqueue(
+    scanId: string,
+    sourceRef: string,
+    scanDir: string,
+  ): Promise<void> {
+    try {
+      await this.githubIngestion.ingest(sourceRef, undefined, scanId, scanDir);
+      await this.scanQueue.add("process-scan", { scanId, scanDir });
+      this.logger.log(`Enqueued scan job after background ingestion: ${scanId}`);
+    } catch (err: any) {
+      const reason =
+        err instanceof GitHubIngestionError
+          ? err.message
+          : err?.message ?? "Repository ingestion failed";
+      this.logger.error(
+        `Background ingestion failed for scan ${scanId}: ${reason}`,
+      );
+      await this.prisma.scanJob
+        .update({
+          where: { id: scanId },
+          data: {
+            status: "failed",
+            statusResult: "blocked",
+            failureReason: reason,
+            completedAt: new Date(),
+          },
+        })
+        .catch((updateErr: any) => {
+          this.logger.error(
+            `Failed to mark scan ${scanId} as failed: ${updateErr?.message ?? updateErr}`,
+          );
+        });
+      this.removeScanDir(scanId);
     }
   }
 
