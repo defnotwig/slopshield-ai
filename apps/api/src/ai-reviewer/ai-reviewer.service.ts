@@ -26,10 +26,10 @@ export class AIReviewerService {
 
   private readonly batchSize = Number(process.env.AI_BATCH_SIZE ?? 4);
   private readonly batchConcurrency = Number(
-    process.env.AI_BATCH_CONCURRENCY ?? 4,
+    process.env.AI_BATCH_CONCURRENCY ?? 2,
   );
   private readonly batchTimeoutMs = Number(
-    process.env.AI_BATCH_TIMEOUT_MS ?? 25_000,
+    process.env.AI_BATCH_TIMEOUT_MS ?? 90_000,
   );
 
   constructor(
