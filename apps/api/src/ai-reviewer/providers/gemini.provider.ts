@@ -16,7 +16,7 @@ import { redactSecrets } from "../../scan/secret-redactor.js";
 
 /** Per-call wall-clock cap for a single Gemini request (defense-in-depth on top
  * of the service-level per-batch timeout). */
-const DEFAULT_AI_CALL_TIMEOUT_MS = 20_000;
+const DEFAULT_AI_CALL_TIMEOUT_MS = 60_000;
 
 /**
  * Resolve the Gemini model identifier from the GEMINI_MODEL env value.

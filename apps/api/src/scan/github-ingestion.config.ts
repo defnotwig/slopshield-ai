@@ -18,8 +18,8 @@ export interface GitHubIngestionConfig {
   fetchMechanism: "tarball";
 }
 
-/** Default maximum repository size in bytes (250 MB). */
-const DEFAULT_MAX_REPO_BYTES = 262_144_000;
+/** Default maximum repository size in bytes (5 GB). */
+const DEFAULT_MAX_REPO_BYTES = 5_368_709_120;
 /** Minimum permitted maximum repository size in bytes (1 MB). */
 const MIN_MAX_REPO_BYTES = 1_048_576;
 
@@ -55,8 +55,8 @@ export function loadGitHubIngestionConfig(
 ): GitHubIngestionConfig {
   return {
     maxRepoBytes: parseMaxRepoBytes(env.MAX_REPO_BYTES),
-    maxFileCount: Number(env.MAX_FILE_COUNT ?? 5000), // 5000 files
-    fetchTimeoutMs: Number(env.FETCH_TIMEOUT_MS ?? 60_000), // 60 s
+    maxFileCount: Number(env.MAX_FILE_COUNT ?? 10000), // 10000 files
+    fetchTimeoutMs: Number(env.FETCH_TIMEOUT_MS ?? 300_000), // 5 min
     githubToken: env.GITHUB_TOKEN || undefined,
     fetchMechanism: "tarball",
   };
