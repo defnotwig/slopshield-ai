@@ -154,7 +154,7 @@ export class OllamaProvider implements AIReviewerProvider {
     validate: (parsed: unknown) => T,
     context: string,
   ): Promise<T> {
-    const maxAttempts = 3;
+    const maxAttempts = 2;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -197,14 +197,34 @@ export class OllamaProvider implements AIReviewerProvider {
       response_format: { type: "json_object" },
     };
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    // Per-request wall-clock cap so a hung Ollama call cannot block the batch
+    // beyond this bound. Defaults to 25s; the service-level batch timeout and
+    // global review deadline provide additional upper bounds.
+    const timeoutMs = Number(
+      this.configService.get<string>("OLLAMA_CALL_TIMEOUT_MS") ?? 25_000,
+    );
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        throw new Error(`Ollama API request timed out after ${timeoutMs}ms`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "unknown error");

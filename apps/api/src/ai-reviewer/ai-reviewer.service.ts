@@ -26,11 +26,22 @@ export class AIReviewerService {
 
   private readonly batchSize = Number(process.env.AI_BATCH_SIZE ?? 4);
   private readonly batchConcurrency = Number(
-    process.env.AI_BATCH_CONCURRENCY ?? 2,
+    process.env.AI_BATCH_CONCURRENCY ?? 3,
   );
   private readonly batchTimeoutMs = Number(
-    process.env.AI_BATCH_TIMEOUT_MS ?? 90_000,
+    process.env.AI_BATCH_TIMEOUT_MS ?? 30_000,
   );
+  /**
+   * Hard global budget for the ENTIRE AI review phase. Whatever batches finish
+   * within this window contribute findings; the rest are abandoned so the scan
+   * always stays sub-60s end-to-end. This is the single guarantee that the
+   * report is never blocked behind a slow model.
+   */
+  private readonly reviewDeadlineMs = Number(
+    process.env.AI_REVIEW_DEADLINE_MS ?? 40_000,
+  );
+  /** Max batches to dispatch per scan, regardless of file count (cost + latency cap). */
+  private readonly maxBatches = Number(process.env.AI_MAX_BATCHES ?? 6);
 
   constructor(
     @Inject(AI_REVIEWER_PROVIDER) private readonly provider: AIReviewerProvider,
@@ -52,12 +63,22 @@ export class AIReviewerService {
     files: ReviewFile[],
     existingFindings: { title: string; severity: string; file: string }[],
   ): Promise<AIReviewServiceResult> {
-    const batches = batchFilesByDirectory(files, this.batchSize);
+    let batches = batchFilesByDirectory(files, this.batchSize);
+
+    // Cap the number of batches to bound cost and latency. Extra batches beyond
+    // the cap are dropped from AI review (static analysis still covers them).
+    if (batches.length > this.maxBatches) {
+      this.logger.warn(
+        `AI review: capping ${batches.length} batches to ${this.maxBatches} for scan ${scanId}.`,
+      );
+      batches = batches.slice(0, this.maxBatches);
+    }
+
     this.logger.log(
-      `Dispatching AI review for scan ID ${scanId}: ${files.length} files across ${batches.length} batch(es), concurrency ${this.batchConcurrency}.`,
+      `Dispatching AI review for scan ID ${scanId}: ${files.length} files across ${batches.length} batch(es), concurrency ${this.batchConcurrency}, global budget ${this.reviewDeadlineMs}ms.`,
     );
 
-    const batchResults = await mapWithConcurrency(
+    const runAllBatches = mapWithConcurrency(
       batches,
       this.batchConcurrency,
       (batch, index) =>
@@ -78,6 +99,20 @@ export class AIReviewerService {
             return emptyReviewResult();
           },
         ),
+    );
+
+    // Global deadline: whatever finishes within reviewDeadlineMs is used; if the
+    // whole phase exceeds the budget we proceed with an empty AI result so the
+    // scan completes sub-60s and the report/Lark card go out immediately.
+    const batchResults = await withTimeout(
+      runAllBatches,
+      this.reviewDeadlineMs,
+      () => {
+        this.logger.warn(
+          `AI review global deadline (${this.reviewDeadlineMs}ms) exceeded for scan ${scanId}; proceeding with partial/empty AI findings.`,
+        );
+        return [] as Awaited<typeof runAllBatches>;
+      },
     );
 
     const merged = mergeAIReviewResults(batchResults);

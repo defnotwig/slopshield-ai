@@ -27,8 +27,12 @@ export const AIFindingSchema = z.object({
   /** Relative file path where the issue was found. */
   file: z.string(),
 
-  /** Line number in the file (1-indexed). Optional for project-wide observations. */
-  line: z.number().int().positive().nullish().transform((v) => v ?? undefined),
+  /** Line number in the file (1-indexed). Optional for project-wide observations.
+   *  Coerce non-positive / invalid values to undefined rather than rejecting. */
+  line: z
+    .number()
+    .nullish()
+    .transform((v) => (typeof v === "number" && v > 0 ? v : undefined)),
 
   /** Reference to an external standard (e.g. "OWASP A03:2021"). */
   standard: z.string().nullish().transform((v) => v ?? undefined),
@@ -61,9 +65,14 @@ export const AIFindingSchema = z.object({
   /**
    * The AI's self-reported confidence that this is a true positive (0–1).
    * Findings below a configurable threshold are down-ranked in the report.
-   * Defaults to 0.5 when the model omits it.
+   * Defaults to 0.5 when the model omits it; clamps out-of-range values.
    */
-  confidence: z.number().min(0).max(1).nullish().transform((v) => v ?? 0.5),
+  confidence: z
+    .number()
+    .nullish()
+    .transform((v) =>
+      typeof v === "number" ? Math.min(1, Math.max(0, v)) : 0.5,
+    ),
 });
 
 /** Typed representation of a single AI-produced finding. */
