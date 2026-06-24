@@ -177,7 +177,7 @@ export function FindingsTable({
 
       {/* Findings Table */}
       <div className="border border-border rounded-sm overflow-hidden bg-card">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/30 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -203,7 +203,7 @@ export function FindingsTable({
                 sortedFindings.map((finding) => (
                   <tr
                     key={finding.id}
-                    className="hover:bg-muted/30 transition-colors"
+                    className="hover:bg-muted/50 transition-colors"
                   >
                     <td className="px-6 py-4.5 whitespace-nowrap">
                       <SeverityBadge severity={finding.severity} />
@@ -250,6 +250,60 @@ export function FindingsTable({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card Fallback */}
+        <div className="md:hidden">
+          {filteredFindings.length === 0 ? (
+            <div className="px-6 py-12 text-center text-muted-foreground font-medium">
+              No findings matches the active filter criteria. Clear filters to
+              see all.
+            </div>
+          ) : (
+            sortedFindings.map((finding) => (
+              <div
+                key={finding.id + "-card"}
+                className="p-4 border-b border-border last:border-0 space-y-2"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <SeverityBadge severity={finding.severity} />
+                  {finding.blocking && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-none text-[9px] font-mono font-bold bg-status-blocked/10 text-status-blocked border border-status-blocked">
+                      BLOCKER
+                    </span>
+                  )}
+                  <span className="capitalize text-xs font-semibold tracking-wide text-muted-foreground">
+                    {finding.category}
+                  </span>
+                </div>
+                <p className="font-semibold text-foreground text-sm">
+                  {finding.title}
+                </p>
+                {finding.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {finding.description}
+                  </p>
+                )}
+                <p className="font-mono text-xs text-muted-foreground">
+                  {finding.filePath ? (
+                    <span>
+                      {finding.filePath}
+                      {finding.lineNumber ? `:${finding.lineNumber}` : ""}
+                    </span>
+                  ) : (
+                    <span className="italic">Project-wide</span>
+                  )}
+                </p>
+                <button
+                  onClick={() => onSelectFinding(finding)}
+                  className="w-full justify-center inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-sm border border-border bg-muted/20 text-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Inspect</span>
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

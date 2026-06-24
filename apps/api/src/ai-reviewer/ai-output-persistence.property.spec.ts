@@ -49,14 +49,16 @@ function buildProviderReturning(responseText: string): GeminiProvider {
 
   const provider = new GeminiProvider(config);
 
-  // Inject a fake client in place of the real GoogleGenAI instance. The real
-  // reviewCode path calls `this.ai.models.generateContent(...)` and reads
-  // `.text` off the response.
-  (provider as unknown as { ai: unknown }).ai = {
-    models: {
-      generateContent: async () => ({ text: responseText }),
+  // Inject a fake client pool in place of the real GoogleGenAI instances. The
+  // reviewCode path rotates over `this.clients[i].models.generateContent(...)`
+  // and reads `.text` off the response.
+  (provider as unknown as { clients: unknown[] }).clients = [
+    {
+      models: {
+        generateContent: async () => ({ text: responseText }),
+      },
     },
-  };
+  ];
 
   return provider;
 }

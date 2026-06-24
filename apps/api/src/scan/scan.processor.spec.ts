@@ -80,7 +80,13 @@ describe("ScanProcessor guardrails", () => {
           createMany: jest.fn().mockResolvedValue({}),
           findMany: jest.fn().mockResolvedValue([]),
         },
-        scanJob: { update: jest.fn().mockResolvedValue({}) },
+        scanJob: {
+          update: jest.fn().mockResolvedValue({}),
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ scanMode: "full", project: null }),
+        },
+        scanMetrics: { upsert: jest.fn().mockResolvedValue({}) },
       };
       gateway = { broadcastProgress: jest.fn() };
       orchestrator = {
@@ -261,7 +267,13 @@ describe("ScanProcessor guardrails", () => {
           createMany: jest.fn().mockResolvedValue({}),
           findMany: jest.fn().mockResolvedValue([]),
         },
-        scanJob: { update: jest.fn().mockResolvedValue({}) },
+        scanJob: {
+          update: jest.fn().mockResolvedValue({}),
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ scanMode: "full", project: null }),
+        },
+        scanMetrics: { upsert: jest.fn().mockResolvedValue({}) },
       };
       gateway = { broadcastProgress: jest.fn() };
       orchestrator = {

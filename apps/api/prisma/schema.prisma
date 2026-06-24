@@ -69,6 +69,10 @@ model Project {
   minimumScore   Int      @default(80) @map("minimum_score")
   larkChatId     String?  @map("lark_chat_id")
   teamLeadLarkId String?  @map("team_lead_lark_id")
+  // Per-project custom scan rules: array of { id, name, pattern, flags?, severity,
+  // category, message, recommendation?, blocking?, fileGlobs? }. Applied by the
+  // CustomRuleAnalyzer as an extra pass after the built-in analyzers.
+  customRules    Json?    @map("custom_rules")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -96,6 +100,8 @@ model ScanJob {
   testabilityScore     Int?      @map("testability_score")
   frontendScore        Int?      @map("frontend_score")
   backendScore         Int?      @map("backend_score")
+  reliabilityScore     Int?      @map("reliability_score")
+  documentationScore   Int?      @map("documentation_score")
   statusResult         String?   @map("status_result")
   failureReason        String?   @map("failure_reason")
   analyzerCoverage     Json?     @map("analyzer_coverage")
@@ -109,13 +115,48 @@ model ScanJob {
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  project       Project?    @relation(fields: [projectId], references: [id])
-  startedByUser User?       @relation(fields: [startedBy], references: [id])
+  project       Project?     @relation(fields: [projectId], references: [id])
+  startedByUser User?        @relation(fields: [startedBy], references: [id])
   scanFiles     ScanFile[]
   findings      Finding[]
   larkEvents    LarkEvent[]
+  metrics       ScanMetrics?
 
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
   @@map("scan_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// ScanMetrics — Per-scan performance & observability telemetry (1:1 ScanJob)
+// ---------------------------------------------------------------------------
+// Persists the timing/coverage/token breakdown that was previously only logged
+// to stdout, so scan performance is queryable, chartable, and cost-attributable.
+model ScanMetrics {
+  id                   String   @id @default(uuid())
+  scanJobId            String   @unique @map("scan_job_id")
+  queueWaitMs          Int?     @map("queue_wait_ms")
+  fetchMs              Int?     @map("fetch_ms")
+  classifyMs           Int?     @map("classify_ms")
+  staticAnalysisMs     Int?     @map("static_analysis_ms")
+  aiReviewMs           Int?     @map("ai_review_ms")
+  scoringMs            Int?     @map("scoring_ms")
+  totalMs              Int?     @map("total_ms")
+  totalFiles           Int?     @map("total_files")
+  classifiedFiles      Int?     @map("classified_files")
+  analyzedFiles        Int?     @map("analyzed_files")
+  staticFindingCount   Int?     @map("static_finding_count")
+  aiFindingCount       Int?     @map("ai_finding_count")
+  blockingFindingCount Int?     @map("blocking_finding_count")
+  aiInputTokens        Int?     @map("ai_input_tokens")
+  aiOutputTokens       Int?     @map("ai_output_tokens")
+  analyzerBreakdown    Json?    @map("analyzer_breakdown")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  scanJob ScanJob @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
+
+  @@map("scan_metrics")
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +176,7 @@ model ScanFile {
 
   scanJob ScanJob @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
 
+  @@index([scanJobId])
   @@map("scan_files")
 }
 
@@ -146,23 +188,26 @@ model Finding {
   scanJobId         String   @map("scan_job_id")
   filePath          String?  @map("file_path")
   lineNumber        Int?     @map("line_number")
-  severity          String
-  category          String
-  title             String
-  description       String?
-  standardReference String?  @map("standard_reference")
-  recommendation    String?
-  suggestedTests    Json?    @map("suggested_tests")
-  blocking          Boolean  @default(false)
-  confidence        Float?   @default(0.5)
-  source            String
-  codeSnippet       String?  @map("code_snippet")
-  falsePositive     Boolean  @default(false) @map("false_positive")
-  createdAt         DateTime @default(now()) @map("created_at")
+  severity           String
+  category           String
+  title              String
+  description        String?
+  standardReferences String[] @default([]) @map("standard_references")
+  recommendation     String?
+  suggestedTests     Json?    @map("suggested_tests")
+  blocking           Boolean  @default(false)
+  confidence         Float?   @default(0.5)
+  source             String
+  codeSnippet        String?  @map("code_snippet")
+  falsePositive      Boolean  @default(false) @map("false_positive")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   scanJob  ScanJob   @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
   fixTasks FixTask[]
 
+  @@index([scanJobId])
+  @@index([scanJobId, severity])
+  @@index([scanJobId, falsePositive])
   @@map("findings")
 }
 
@@ -217,6 +262,7 @@ model LarkEvent {
 
   scanJob ScanJob? @relation(fields: [scanJobId], references: [id], onDelete: SetNull)
 
+  @@index([scanJobId])
   @@map("lark_events")
 }
 
@@ -237,6 +283,8 @@ model FixTask {
   finding  Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
   assignee User?   @relation(fields: [assignedTo], references: [id])
 
+  @@index([findingId])
+  @@index([assignedTo])
   @@map("fix_tasks")
 }
 

@@ -53,19 +53,22 @@ const SECRET_PATTERNS: SecretPattern[] = [
     valueGroup: 0,
   },
   {
+    // The optional leading backslash (`\\?`) makes redaction robust to
+    // JSON-escaped quotes (e.g. `apiKey=\"...\"` produced by JSON.stringify),
+    // which would otherwise let a secret slip through the summarize-for-Lark path.
     name: "Generic API Key",
     regex:
-      /(?:api[_-]?key|apikey|api[_-]?secret)\s*[:=]\s*['"]([a-zA-Z0-9_\-]{16,})['"]/gi,
+      /(?:api[_-]?key|apikey|api[_-]?secret)\s*[:=]\s*\\?['"]([a-zA-Z0-9_\-]{16,})\\?['"]/gi,
     valueGroup: 1,
   },
   {
     name: "Generic Password",
-    regex: /(?:password|passwd|pwd|secret)\s*[:=]\s*['"]([^'"]{8,})['"]/gi,
+    regex: /(?:password|passwd|pwd|secret)\s*[:=]\s*\\?['"]([^'"\\]{8,})\\?['"]/gi,
     valueGroup: 1,
   },
   {
     name: "Generic Token",
-    regex: /(?:token|bearer|auth)\s*[:=]\s*['"]([a-zA-Z0-9_\-.]{20,})['"]/gi,
+    regex: /(?:token|bearer|auth)\s*[:=]\s*\\?['"]([a-zA-Z0-9_\-.]{20,})\\?['"]/gi,
     valueGroup: 1,
   },
   {

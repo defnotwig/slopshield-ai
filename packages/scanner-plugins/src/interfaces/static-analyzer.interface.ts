@@ -1,4 +1,4 @@
-import { Finding } from "@slopshield/shared";
+import { Finding, CustomRule } from "@slopshield/shared";
 
 export interface AnalysisContext {
   /** Absolute path to the directory containing files to analyze */
@@ -7,6 +7,16 @@ export interface AnalysisContext {
   files: string[];
   /** Scan job ID for correlation */
   scanId: string;
+  /**
+   * Project-defined custom rules to apply (consumed by CustomRuleAnalyzer).
+   * Absent/empty means there are no custom rules for this scan.
+   */
+  customRules?: CustomRule[];
+  /**
+   * When present, only analyzers whose `name` is in this list should run. The
+   * orchestrator uses it to honor `scanMode`. Absent = run all available.
+   */
+  enabledAnalyzers?: string[];
 }
 
 export interface AnalysisResult {

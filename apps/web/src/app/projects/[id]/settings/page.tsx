@@ -24,6 +24,7 @@ import {
   UserMinus,
   UserPlus,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export default function ProjectSettingsPage() {
   const params = useParams();
@@ -54,6 +55,16 @@ export default function ProjectSettingsPage() {
   const [teamLeadLarkId, setTeamLeadLarkId] = useState("");
 
   const [msg, setMsg] = useState({ text: "", type: "" });
+  const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const roleBadgeClass = (role: string) => {
+    if (role === "admin")
+      return "bg-red-500/10 border border-red-500/20 text-red-500";
+    if (role === "lead")
+      return "bg-yellow-500/10 border border-yellow-500/20 text-yellow-500";
+    return "bg-cyan-500/10 border border-cyan-500/20 text-cyan-500";
+  };
 
   useEffect(() => {
     if (project) {
@@ -92,18 +103,16 @@ export default function ProjectSettingsPage() {
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to remove this member from the project workspace?",
-      )
-    ) {
-      return;
-    }
     try {
       await removeMemberMutation.mutateAsync({ projectId, memberId });
       refetchMembers();
     } catch (err: any) {
-      alert(err.message || "Failed to remove member.");
+      setInviteMsg({
+        text: err.message || "Failed to remove member.",
+        type: "error",
+      });
+    } finally {
+      setMemberToRemove(null);
     }
   };
 
@@ -136,13 +145,6 @@ export default function ProjectSettingsPage() {
   };
 
   const handleDelete = async () => {
-    if (
-      !window.confirm(
-        "Are you absolutely sure you want to delete this project? This will remove all related scan logs.",
-      )
-    ) {
-      return;
-    }
     try {
       await deleteMutation.mutateAsync(projectId);
       router.push("/projects");
@@ -151,14 +153,16 @@ export default function ProjectSettingsPage() {
         text: err.message || "Failed to delete project.",
         type: "error",
       });
+    } finally {
+      setDeleteOpen(false);
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
-        <p className="text-sm font-mono text-gray-500">
+        <Loader2 className="w-8 h-8 text-ring animate-spin" />
+        <p className="text-sm font-mono text-muted-foreground">
           Retrieving configuration settings...
         </p>
       </div>
@@ -168,11 +172,11 @@ export default function ProjectSettingsPage() {
   if (isError || !project) {
     return (
       <div className="max-w-md mx-auto py-24 text-center space-y-4">
-        <div className="p-4 bg-red-500/10 text-red-500 rounded-full w-fit mx-auto border border-red-500/20">
+        <div className="p-4 bg-destructive/10 text-destructive rounded-full w-fit mx-auto border border-destructive/20">
           <AlertCircle className="w-8 h-8" />
         </div>
         <h3 className="text-lg font-bold">Failed to load configuration</h3>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           The project was not found in the database.
         </p>
       </div>
@@ -185,15 +189,15 @@ export default function ProjectSettingsPage() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.push("/projects")}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors uppercase tracking-wider"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Projects
         </button>
 
         <button
-          onClick={handleDelete}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg border border-red-500/20 text-red-500 bg-red-500/5 hover:bg-red-500 hover:text-white transition-all"
+          onClick={() => setDeleteOpen(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-sm border border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <Trash2 className="w-4 h-4" />
           Delete Project
@@ -201,10 +205,10 @@ export default function ProjectSettingsPage() {
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-bold text-foreground">
           Project Settings
         </h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Configure security triggers, minimum thresholds, and team notification
           preferences for <strong>{project.name}</strong>.
         </p>
@@ -212,10 +216,10 @@ export default function ProjectSettingsPage() {
 
       {msg.text && (
         <div
-          className={`p-4 rounded-lg text-xs font-bold flex gap-2 items-center ${
+          className={`p-4 rounded-sm text-xs font-bold flex gap-2 items-center ${
             msg.type === "success"
-              ? "bg-green-500/10 border border-green-500/20 text-green-500"
-              : "bg-red-500/10 border border-red-500/20 text-red-500"
+              ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+              : "bg-destructive/10 border border-destructive/20 text-destructive"
           }`}
         >
           {msg.type === "success" ? (
@@ -228,112 +232,136 @@ export default function ProjectSettingsPage() {
       )}
 
       {/* Configuration Form */}
-      <div className="glass-card bg-white dark:bg-gray-900/35 border border-gray-200 dark:border-gray-800 p-8 rounded-lg">
+      <div className="bg-card border border-border p-8 rounded-sm">
         <form onSubmit={handleSave} className="space-y-6">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 border-b border-gray-150 dark:border-gray-800 pb-2.5">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2.5">
             General Properties
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+              <label
+                htmlFor="ps-name"
+                className="text-xs font-bold text-muted-foreground uppercase tracking-wider block"
+              >
                 Project Name *
               </label>
               <input
+                id="ps-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full px-3.5 py-2 text-sm rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
                 required
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+              <label
+                htmlFor="ps-framework"
+                className="text-xs font-bold text-muted-foreground uppercase tracking-wider block"
+              >
                 Framework / Environment
               </label>
               <input
+                id="ps-framework"
                 type="text"
                 value={framework}
                 onChange={(e) => setFramework(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full px-3.5 py-2 text-sm rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+            <label
+              htmlFor="ps-repo-url"
+              className="text-xs font-bold text-muted-foreground uppercase tracking-wider block"
+            >
               Repository HTTPS URL
             </label>
             <input
+              id="ps-repo-url"
               type="text"
               value={repositoryUrl}
               onChange={(e) => setRepositoryUrl(e.target.value)}
-              className="w-full px-3.5 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="w-full px-3.5 py-2 text-sm rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
             />
           </div>
 
-          <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 border-b border-gray-150 dark:border-gray-800 pt-4 pb-2.5">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pt-4 pb-2.5">
             Audit Quality Rules
           </h3>
 
           <div className="space-y-2.5">
-            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+            <label
+              htmlFor="ps-min-score"
+              className="text-xs font-bold text-muted-foreground uppercase tracking-wider block"
+            >
               Minimum Pass Score Verdict (0 - 100)
             </label>
             <div className="flex items-center gap-4">
               <input
+                id="ps-min-score"
                 type="number"
                 min="0"
                 max="100"
                 value={minimumScore}
                 onChange={(e) => setMinimumScore(Number(e.target.value))}
-                className="w-24 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-24 px-3 py-2 text-sm rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
               />
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 Scans scoring below this value are flagged as Risky or Blocked
                 automatically.
               </span>
             </div>
           </div>
 
-          <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 border-b border-gray-150 dark:border-gray-800 pt-4 pb-2.5">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pt-4 pb-2.5">
             Lark Bot Chat Notifications
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+              <label
+                htmlFor="ps-lark-chat"
+                className="text-xs font-bold text-muted-foreground uppercase tracking-wider block"
+              >
                 Lark Chat ID
               </label>
               <input
+                id="ps-lark-chat"
                 type="text"
                 placeholder="oc_xxxxxxxxxxxxxxxx"
                 value={larkChatId}
                 onChange={(e) => setLarkChatId(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full px-3.5 py-2 text-sm rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+              <label
+                htmlFor="ps-lark-lead"
+                className="text-xs font-bold text-muted-foreground uppercase tracking-wider block"
+              >
                 Team Lead Lark User ID
               </label>
               <input
+                id="ps-lark-lead"
                 type="text"
                 placeholder="ou_xxxxxxxxxxxxxxxx"
                 value={teamLeadLarkId}
                 onChange={(e) => setTeamLeadLarkId(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full px-3.5 py-2 text-sm rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
               />
             </div>
           </div>
 
-          <div className="border-t border-gray-200 dark:border-gray-800 pt-6 flex justify-end">
+          <div className="border-t border-border pt-6 flex justify-end">
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-6 py-3 font-bold rounded-lg bg-cyan-500 text-gray-950 hover:bg-cyan-400 disabled:opacity-50 transition-all shadow-md shadow-cyan-500/20"
+              className="inline-flex items-center gap-1.5 px-6 py-3 font-bold rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               {updateMutation.isPending ? (
                 <Loader2 className="w-4.5 h-4.5 animate-spin" />
@@ -347,13 +375,13 @@ export default function ProjectSettingsPage() {
       </div>
 
       {/* Workspace Sharing & Team Collaborators */}
-      <div className="glass-card bg-white dark:bg-gray-900/35 border border-gray-200 dark:border-gray-800 p-8 rounded-lg space-y-6">
+      <div className="bg-card border border-border p-8 rounded-sm space-y-6">
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 border-b border-gray-150 dark:border-gray-800 pb-2.5 flex items-center gap-2">
-            <Users className="w-4 h-4 text-cyan-500" />
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2.5 flex items-center gap-2">
+            <Users className="w-4 h-4 text-ring" />
             Workspace Sharing & Team Collaborators
           </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Authorize other developers and engineers to access quality metrics,
             findings logs, and receive alerts for this project workspace.
           </p>
@@ -361,10 +389,10 @@ export default function ProjectSettingsPage() {
 
         {inviteMsg.text && (
           <div
-            className={`p-4 rounded-lg text-xs font-bold flex gap-2 items-center ${
+            className={`p-4 rounded-sm text-xs font-bold flex gap-2 items-center ${
               inviteMsg.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
+                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                : "bg-destructive/10 border border-destructive/20 text-destructive"
             }`}
           >
             {inviteMsg.type === "success" ? (
@@ -378,30 +406,38 @@ export default function ProjectSettingsPage() {
 
         <form
           onSubmit={handleAddMember}
-          className="flex gap-4 items-end bg-gray-55 dark:bg-gray-950/40 p-4 rounded-lg border border-gray-200 dark:border-gray-800"
+          className="flex gap-4 items-end bg-muted/40 p-4 rounded-sm border border-border"
         >
           <div className="flex-1 space-y-1">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+            <label
+              htmlFor="ps-invite-email"
+              className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block"
+            >
               Collaborator Email Address
             </label>
             <input
+              id="ps-invite-email"
               type="email"
               placeholder="engineer@company.com"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-905 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="w-full px-3 py-2 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
               required
             />
           </div>
 
           <div className="w-36 space-y-1">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+            <label
+              htmlFor="ps-invite-role"
+              className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block"
+            >
               Workspace Role
             </label>
             <select
+              id="ps-invite-role"
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-905 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="w-full px-3 py-2 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               <option value="member">Member</option>
               <option value="lead">Lead</option>
@@ -412,7 +448,7 @@ export default function ProjectSettingsPage() {
           <button
             type="submit"
             disabled={addMemberMutation.isPending}
-            className="px-4 py-2 text-xs font-bold rounded-lg bg-cyan-500 text-gray-950 hover:bg-cyan-400 disabled:opacity-50 flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/10 h-8"
+            className="px-4 py-2 text-xs font-bold rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 h-8"
           >
             {addMemberMutation.isPending ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -424,35 +460,36 @@ export default function ProjectSettingsPage() {
         </form>
 
         <div className="space-y-2">
-          <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
             Active Collaborators ({members?.length || 0})
           </h4>
 
           {membersLoading ? (
             <div className="flex justify-center py-6">
-              <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
+              <Loader2 className="w-6 h-6 animate-spin text-ring" />
             </div>
           ) : !members || members.length === 0 ? (
-            <p className="text-xs italic text-gray-500 py-4 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-lg">
+            <p className="text-xs italic text-muted-foreground py-4 text-center border border-dashed border-border rounded-sm">
               No additional workspace collaborators configured. Add members
               above to share dashboard access.
             </p>
           ) : (
-            <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-              <table className="w-full text-left border-collapse">
+            <div className="border border-border rounded-sm overflow-hidden">
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-55 dark:bg-gray-950/70 border-b border-gray-200 dark:border-gray-800 text-[10px] uppercase font-bold text-gray-400">
+                  <tr className="bg-muted/40 border-b border-border text-[10px] uppercase font-bold text-muted-foreground">
                     <th className="px-4 py-2.5">Name</th>
                     <th className="px-4 py-2.5">Email</th>
                     <th className="px-4 py-2.5">Role</th>
                     <th className="px-4 py-2.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-xs">
+                <tbody className="divide-y divide-border text-xs">
                   {members.map((member) => (
                     <tr
                       key={member.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-950/20 text-gray-700 dark:text-gray-300"
+                      className="hover:bg-muted/50 text-foreground"
                     >
                       <td className="px-4 py-3 font-semibold">
                         {member.user.name}
@@ -462,22 +499,18 @@ export default function ProjectSettingsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            member.role === "admin"
-                              ? "bg-red-500/10 border border-red-500/20 text-red-500"
-                              : member.role === "lead"
-                                ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-500"
-                                : "bg-cyan-500/10 border border-cyan-500/20 text-cyan-500"
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${roleBadgeClass(
+                            member.role,
+                          )}`}
                         >
                           {member.role}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button
-                          onClick={() => handleRemoveMember(member.id)}
+                          onClick={() => setMemberToRemove(member.id)}
                           disabled={removeMemberMutation.isPending}
-                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-500/5 rounded transition-all"
+                          className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                           title="Remove Collaborator"
                         >
                           <UserMinus className="w-4 h-4" />
@@ -487,10 +520,62 @@ export default function ProjectSettingsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
+              <div className="md:hidden divide-y divide-border">
+                {members.map((member) => (
+                  <div key={member.id + "-card"} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-foreground text-sm">
+                        {member.user.name}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${roleBadgeClass(
+                          member.role,
+                        )}`}
+                      >
+                        {member.role}
+                      </span>
+                    </div>
+                    <p className="font-mono text-xs text-muted-foreground break-all">
+                      {member.user.email}
+                    </p>
+                    <button
+                      onClick={() => setMemberToRemove(member.id)}
+                      disabled={removeMemberMutation.isPending}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 px-2 py-1 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      <UserMinus className="w-3.5 h-3.5" />
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        destructive
+        title="Delete this project?"
+        description="This permanently removes the project and all related scan logs. This action cannot be undone."
+        confirmLabel="Delete Project"
+        loading={deleteMutation.isPending}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={memberToRemove !== null}
+        destructive
+        title="Remove collaborator?"
+        description="They will lose access to this project workspace, its findings, and alerts."
+        confirmLabel="Remove"
+        loading={removeMemberMutation.isPending}
+        onConfirm={() => memberToRemove && handleRemoveMember(memberToRemove)}
+        onCancel={() => setMemberToRemove(null)}
+      />
     </div>
   );
 }

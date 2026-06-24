@@ -555,7 +555,7 @@ describe('GitHub App Integration Tests', () => {
             title: 'Minor issue',
             severity: 'low',
             category: 'maintainability',
-            standardReference: 'M-001',
+            standardReferences: ['M-001'],
           },
         ],
       });
@@ -613,13 +613,13 @@ describe('GitHub App Integration Tests', () => {
             title: 'SQL Injection',
             severity: 'critical',
             category: 'security',
-            standardReference: 'S-001',
+            standardReferences: ['S-001'],
           },
           {
             title: 'XSS Vulnerability',
             severity: 'high',
             category: 'security',
-            standardReference: 'S-002',
+            standardReferences: ['S-002'],
           },
         ],
       });

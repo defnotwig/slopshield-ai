@@ -50,6 +50,10 @@ export const FindingSourceEnum = z.enum([
   "semgrep",
   "rules-engine",
   "ai-reviewer",
+  "architecture",
+  "dependency",
+  "accessibility",
+  "custom-rules",
 ]);
 
 /** TypeScript union type derived from the FindingSource Zod enum. */

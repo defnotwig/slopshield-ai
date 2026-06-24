@@ -40,8 +40,8 @@ export default function ScanProgressPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
-        <p className="text-sm font-mono text-gray-500">
+        <Loader2 className="w-8 h-8 text-ring animate-spin" />
+        <p className="text-sm font-mono text-muted-foreground">
           Initializing scan channel context...
         </p>
       </div>
@@ -55,12 +55,12 @@ export default function ScanProgressPage() {
           <AlertCircle className="w-8 h-8" />
         </div>
         <h3 className="text-lg font-bold">Failed to load scan job</h3>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           The scan job may not exist or database access failed.
         </p>
         <button
           onClick={() => refetch()}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-sm border border-border hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Retry

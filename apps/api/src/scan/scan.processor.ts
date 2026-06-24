@@ -6,7 +6,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ScanGateway } from "./scan.gateway.js";
-import { redactSecrets } from "./secret-redactor.js";
 import { FileClassifier } from "@slopshield/scanner-plugins";
 import { ScannerOrchestrator } from "../scanner/scanner.orchestrator.js";
 import { AIReviewerService } from "../ai-reviewer/ai-reviewer.service.js";
@@ -15,6 +14,12 @@ import { ReportService } from "../report/report.service.js";
 import { LarkService } from "../lark/lark.service.js";
 import { NotificationService } from "../notification/notification.service.js";
 import { capFiles, maxAnalyzeFiles } from "../common/env.js";
+import {
+  analyzersForMode,
+  shouldRunAiForMode,
+  fileMatchesMode,
+} from "../scanner/scan-mode.util.js";
+import { CustomRule, CustomRuleListSchema } from "@slopshield/shared";
 
 @Processor("scan-pipeline", { concurrency: 1 })
 export class ScanProcessor extends WorkerHost {
@@ -45,7 +50,7 @@ export class ScanProcessor extends WorkerHost {
     // in a race against a timeout promise so that long-running scans are cancelled.
     if (timeoutMs && typeof timeoutMs === 'number' && timeoutMs > 0) {
       return Promise.race([
-        this.executeProcessing(scanId, scanDir),
+        this.executeProcessing(scanId, scanDir, job),
         new Promise<never>((_, reject) =>
           setTimeout(
             () => reject(new Error(`Scan timed out after ${Math.round(timeoutMs / 1000)}s`)),
@@ -77,7 +82,7 @@ export class ScanProcessor extends WorkerHost {
       });
     }
 
-    return this.executeProcessing(scanId, scanDir).catch(async (err: any) => {
+    return this.executeProcessing(scanId, scanDir, job).catch(async (err: any) => {
       this.logger.error(`Scan pipeline crashed: ${err.message}`, err.stack);
       await this.prisma.scanJob.update({
         where: { id: scanId },
@@ -102,7 +107,28 @@ export class ScanProcessor extends WorkerHost {
     });
   }
 
-  private async executeProcessing(scanId: string, scanDir: string): Promise<any> {
+  private async executeProcessing(
+    scanId: string,
+    scanDir: string,
+    job?: Job<any, any, string>,
+  ): Promise<any> {
+      // Stage timing markers feed the ScanMetrics telemetry persisted at the end.
+      const tStart = Date.now();
+      const queueWaitMs =
+        job && typeof job.timestamp === "number"
+          ? Math.max(0, (job.processedOn ?? tStart) - job.timestamp)
+          : null;
+
+      // Resolve the scan profile (scanMode) and any per-project custom rules up
+      // front so they can gate analyzer selection, file scope, and the AI pass.
+      const scanRow = await this.prisma.scanJob.findUnique({
+        where: { id: scanId },
+        select: { scanMode: true, project: { select: { customRules: true } } },
+      });
+      const scanMode = scanRow?.scanMode ?? "full";
+      const enabledAnalyzers = analyzersForMode(scanMode) ?? undefined;
+      const customRules = this.parseCustomRules(scanRow?.project?.customRules);
+
       // 1. Stage: FETCHING
       await this.updateProgress(
         scanId,
@@ -114,8 +140,9 @@ export class ScanProcessor extends WorkerHost {
         throw new Error(`Scan directory not found: ${scanDir}`);
       }
 
-      const files = this.globFilesSync(scanDir);
+      const files = await this.globFiles(scanDir);
       this.logger.log(`Found ${files.length} files to scan in ${scanId}`);
+      const tFetch = Date.now();
 
       // 2. Stage: CLASSIFYING
       await this.updateProgress(
@@ -137,6 +164,7 @@ export class ScanProcessor extends WorkerHost {
           isBackend: f.isBackend,
         })),
       });
+      const tClassify = Date.now();
 
       // 3. Stage: SCANNING (Static analysis)
       await this.updateProgress(
@@ -145,17 +173,19 @@ export class ScanProcessor extends WorkerHost {
         40,
         "Executing static analysis security scanners...",
       );
+      const staticFileList = capFiles(
+        classified.filter((f) => f.fileType !== "dependency").map((f) => f.path),
+        maxAnalyzeFiles(),
+      );
       const { findings: staticFindings, coverage: analyzerCoverage } =
         await this.orchestrator.runAll({
           scanDir,
-          files: capFiles(
-            classified
-              .filter((f) => f.fileType !== "dependency")
-              .map((f) => f.path),
-            maxAnalyzeFiles(),
-          ),
+          files: staticFileList,
           scanId,
+          enabledAnalyzers,
+          customRules,
         });
+      const tStatic = Date.now();
 
       // 4. Stage: AI-REVIEWING
       await this.updateProgress(
@@ -168,25 +198,46 @@ export class ScanProcessor extends WorkerHost {
       let aiSummary = "No issues identified.";
       let refactorPlan: string[] = [];
       let recommendedTests: string[] = [];
+      let aiInputTokens: number | null = null;
+      let aiOutputTokens: number | null = null;
 
-      // We only run AI review on actual source code files, and limit total context size
+      // We only run AI review on actual source code files (scoped by scanMode),
+      // and limit total context size. `fast` mode skips the AI pass entirely.
       const codeFiles = capFiles(
-        classified.filter(
-          (f) => f.fileType === "frontend" || f.fileType === "backend",
-        ),
+        classified
+          .filter((f) => f.fileType === "frontend" || f.fileType === "backend")
+          .filter((f) => fileMatchesMode(scanMode, f)),
         maxAnalyzeFiles(),
       );
 
-      if (codeFiles.length > 0) {
-        const fileContents = codeFiles.map((f) => ({
-          path: f.path,
-          content: redactSecrets(
-            fs.readFileSync(path.join(scanDir, f.path), "utf8"),
-          ),
-          language: f.language,
-          isFrontend: f.isFrontend,
-          isBackend: f.isBackend,
-        }));
+      if (codeFiles.length > 0 && shouldRunAiForMode(scanMode)) {
+        // Read all candidate files in parallel (async) so we don't block the
+        // event loop. Secret redaction happens once inside the AI provider, so
+        // raw content is passed here (the provider is the single redaction site).
+        const fileContents = (
+          await Promise.all(
+            codeFiles.map(async (f) => {
+              try {
+                const content = await fs.promises.readFile(
+                  path.join(scanDir, f.path),
+                  "utf8",
+                );
+                return {
+                  path: f.path,
+                  content,
+                  language: f.language,
+                  isFrontend: f.isFrontend,
+                  isBackend: f.isBackend,
+                };
+              } catch (readErr: any) {
+                this.logger.warn(
+                  `Skipping unreadable file ${f.path}: ${readErr?.message ?? readErr}`,
+                );
+                return null;
+              }
+            }),
+          )
+        ).filter((f): f is NonNullable<typeof f> => f !== null);
 
         const existingSummary = staticFindings.map((f) => ({
           title: f.title,
@@ -204,16 +255,22 @@ export class ScanProcessor extends WorkerHost {
           aiSummary = aiResult.summary;
           refactorPlan = aiResult.refactor_plan;
           recommendedTests = aiResult.recommended_tests;
+          if (aiResult.usage) {
+            aiInputTokens = aiResult.usage.inputTokens;
+            aiOutputTokens = aiResult.usage.outputTokens;
+          }
         } catch (aiErr: any) {
           this.logger.error(`AI Review pass failed: ${aiErr.message}`);
           aiSummary = `AI Review failed: ${aiErr.message}`;
         }
       }
+      const tAi = Date.now();
 
       // Convert and save findings
       const allFindingsToSave: any[] = [];
 
-      // Add static findings
+      // Add static findings — persist the FULL standards array (previously only
+      // standardReferences[0] survived, silently dropping every other mapping).
       for (const sf of staticFindings) {
         allFindingsToSave.push({
           scanJobId: scanId,
@@ -223,9 +280,9 @@ export class ScanProcessor extends WorkerHost {
           category: sf.category,
           title: sf.title,
           description: sf.whyItMatters,
-          standardReference: sf.standardReferences[0] || null,
+          standardReferences: sf.standardReferences ?? [],
           recommendation: sf.recommendation,
-          suggestedTests: sf.suggestedTests ? sf.suggestedTests : [],
+          suggestedTests: sf.suggestedTests ?? [],
           blocking: sf.blocking,
           confidence: sf.confidence,
           source: sf.source,
@@ -233,7 +290,8 @@ export class ScanProcessor extends WorkerHost {
         });
       }
 
-      // Add AI findings
+      // Add AI findings — preserve the per-finding suggested tests and code
+      // snippet the model returns (both were previously hardcoded away).
       for (const af of aiFindings) {
         allFindingsToSave.push({
           scanJobId: scanId,
@@ -243,13 +301,15 @@ export class ScanProcessor extends WorkerHost {
           category: af.category,
           title: af.title,
           description: af.why_it_matters,
-          standardReference: af.standard || null,
+          standardReferences: af.standard ? [af.standard] : [],
           recommendation: af.recommendation,
-          suggestedTests: [],
+          suggestedTests: Array.isArray(af.suggested_tests)
+            ? af.suggested_tests
+            : [],
           blocking: af.blocking,
           confidence: af.confidence,
           source: "ai-reviewer",
-          codeSnippet: null,
+          codeSnippet: af.code_snippet || null,
         });
       }
 
@@ -283,7 +343,8 @@ export class ScanProcessor extends WorkerHost {
           architectureScore: score.categoryScores.architecture,
           testabilityScore: score.categoryScores.testability,
           frontendScore: score.categoryScores.frontend,
-          backendScore: score.categoryScores.reliability, // reliability mapped to backendScore
+          reliabilityScore: score.categoryScores.reliability,
+          documentationScore: score.categoryScores.documentation,
           statusResult: score.statusResult,
           aiSummary,
           refactorPlan,
@@ -291,6 +352,27 @@ export class ScanProcessor extends WorkerHost {
           analyzerCoverage: analyzerCoverage as any,
           completedAt: new Date(),
         },
+      });
+      const tScoring = Date.now();
+
+      // Persist per-scan observability telemetry (best-effort; never fails the scan).
+      await this.persistMetrics(scanId, {
+        queueWaitMs,
+        fetchMs: tFetch - tStart,
+        classifyMs: tClassify - tFetch,
+        staticAnalysisMs: tStatic - tClassify,
+        aiReviewMs: tAi - tStatic,
+        scoringMs: tScoring - tAi,
+        totalMs: tScoring - tStart,
+        totalFiles: files.length,
+        classifiedFiles: classified.length,
+        analyzedFiles: staticFileList.length,
+        staticFindingCount: staticFindings.length,
+        aiFindingCount: aiFindings.length,
+        blockingFindingCount: savedFindings.filter((f) => f.blocking).length,
+        aiInputTokens,
+        aiOutputTokens,
+        analyzerBreakdown: analyzerCoverage as any,
       });
 
       // 6. Stage: REPORTING
@@ -364,19 +446,78 @@ export class ScanProcessor extends WorkerHost {
     this.gateway.broadcastProgress(scanId, { stage, percentage, message });
   }
 
-  private globFilesSync(dir: string, baseDir = dir): string[] {
+  /**
+   * Asynchronously walk a directory tree, returning file paths relative to
+   * `baseDir`. Uses `withFileTypes` to avoid a `stat` per entry and async I/O so
+   * indexing a large repo does not block the worker/API event loop.
+   */
+  private async globFiles(dir: string, baseDir = dir): Promise<string[]> {
     const results: string[] = [];
-    const list = fs.readdirSync(dir);
-    for (const file of list) {
-      const filePath = path.join(dir, file);
-      const stat = fs.statSync(filePath);
-      if (stat && stat.isDirectory()) {
-        results.push(...this.globFilesSync(filePath, baseDir));
-      } else {
-        const relative = path.relative(baseDir, filePath);
-        results.push(relative);
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const filePath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        results.push(...(await this.globFiles(filePath, baseDir)));
+      } else if (entry.isFile()) {
+        results.push(path.relative(baseDir, filePath));
       }
     }
     return results;
+  }
+
+  /**
+   * Validate a project's stored custom rules JSON against the shared schema,
+   * returning an empty list on absence or malformed data (never throws).
+   */
+  private parseCustomRules(raw: unknown): CustomRule[] {
+    if (!raw) {
+      return [];
+    }
+    const parsed = CustomRuleListSchema.safeParse(raw);
+    if (!parsed.success) {
+      this.logger.warn(
+        `Ignoring malformed project customRules: ${parsed.error.message}`,
+      );
+      return [];
+    }
+    return parsed.data;
+  }
+
+  /**
+   * Best-effort persistence of per-scan telemetry into ScanMetrics. Never throws
+   * so a metrics failure cannot mask or fail the scan's real outcome.
+   */
+  private async persistMetrics(
+    scanId: string,
+    data: {
+      queueWaitMs: number | null;
+      fetchMs: number;
+      classifyMs: number;
+      staticAnalysisMs: number;
+      aiReviewMs: number;
+      scoringMs: number;
+      totalMs: number;
+      totalFiles: number;
+      classifiedFiles: number;
+      analyzedFiles: number;
+      staticFindingCount: number;
+      aiFindingCount: number;
+      blockingFindingCount: number;
+      aiInputTokens: number | null;
+      aiOutputTokens: number | null;
+      analyzerBreakdown: any;
+    },
+  ): Promise<void> {
+    try {
+      await this.prisma.scanMetrics.upsert({
+        where: { scanJobId: scanId },
+        create: { scanJobId: scanId, ...data },
+        update: { ...data },
+      });
+    } catch (err: any) {
+      this.logger.warn(
+        `Failed to persist scan metrics for ${scanId}: ${err?.message ?? err}`,
+      );
+    }
   }
 }

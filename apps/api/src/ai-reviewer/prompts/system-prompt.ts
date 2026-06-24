@@ -21,6 +21,8 @@ You must return your analysis output exclusively as a valid JSON object matching
       "standard": "Optional standard code reference (e.g. OWASP_TOP_10, CWE_TOP_25, WCAG_22)",
       "why_it_matters": "Detailed explanation of the risk, performance, or maintenance impact.",
       "recommendation": "Step-by-step recommendation for refactoring or fixing.",
+      "suggested_tests": ["Optional: specific test cases that would verify the fix for THIS finding."],
+      "code_snippet": "Optional: the offending lines, copied verbatim (keep it to a few lines).",
       "blocking": true | false, // Set true only for high-confidence critical security or architectural faults
       "confidence": 0.95 // Number between 0 and 1
     }

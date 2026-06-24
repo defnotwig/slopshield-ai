@@ -141,7 +141,7 @@ export default function ProfilePage() {
   if (userLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-ring animate-spin" />
         <p className="text-sm font-mono text-muted-foreground">Loading profile...</p>
       </div>
     );
@@ -150,7 +150,7 @@ export default function ProfilePage() {
   if (userError || !user) {
     return (
       <div className="max-w-md mx-auto py-24 text-center space-y-4">
-        <div className="p-4 bg-red-500/10 text-red-500 rounded-full w-fit mx-auto border border-red-500/20">
+        <div className="p-4 bg-destructive/10 text-destructive rounded-full w-fit mx-auto border border-destructive/20">
           <AlertCircle className="w-8 h-8" />
         </div>
         <h3 className="text-lg font-bold text-foreground">Failed to load profile</h3>
@@ -177,7 +177,7 @@ export default function ProfilePage() {
       {/* Account Info Section */}
       <div className="border border-border bg-card p-6 rounded-sm space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2.5 flex items-center gap-2">
-          <User className="w-4 h-4 text-cyan-500" />
+          <User className="w-4 h-4 text-ring" />
           Account Information
         </h3>
 
@@ -221,7 +221,7 @@ export default function ProfilePage() {
       {/* Change Password Section */}
       <div className="border border-border bg-card p-6 rounded-sm space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2.5 flex items-center gap-2">
-          <Lock className="w-4 h-4 text-cyan-500" />
+          <Lock className="w-4 h-4 text-ring" />
           Change Password
         </h3>
 
@@ -229,8 +229,8 @@ export default function ProfilePage() {
           <div
             className={`p-3 rounded-sm text-xs font-bold flex gap-2 items-center ${
               passwordMsg.type === "success"
-                ? "bg-green-500/10 border border-green-500/20 text-green-500"
-                : "bg-red-500/10 border border-red-500/20 text-red-500"
+                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                : "bg-destructive/10 border border-destructive/20 text-destructive"
             }`}
           >
             {passwordMsg.type === "success" ? (
@@ -317,7 +317,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={passwordLoading}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold rounded-sm bg-cyan-500 text-gray-950 hover:bg-cyan-400 disabled:opacity-50 transition-all shadow-md shadow-cyan-500/20"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold rounded-sm bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               {passwordLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -333,13 +333,13 @@ export default function ProfilePage() {
       {/* Connected Accounts Section */}
       <div className="border border-border bg-card p-6 rounded-sm space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2.5 flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-cyan-500" />
+          <Link2 className="w-4 h-4 text-ring" />
           Connected Accounts
         </h3>
 
         {accountsLoading ? (
           <div className="flex items-center justify-center py-6">
-            <Loader2 className="w-5 h-5 text-cyan-500 animate-spin" />
+            <Loader2 className="w-5 h-5 text-ring animate-spin" />
           </div>
         ) : (
           <div className="space-y-3">
@@ -364,7 +364,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => handleDisconnect("github")}
                   disabled={disconnectingProvider === "github"}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-sm border border-red-500/30 text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-sm border border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
                 >
                   {disconnectingProvider === "github" ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -410,7 +410,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => handleDisconnect("lark")}
                   disabled={disconnectingProvider === "lark"}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-sm border border-red-500/30 text-red-500 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-sm border border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
                 >
                   {disconnectingProvider === "lark" ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

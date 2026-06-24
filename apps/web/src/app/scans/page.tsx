@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useScans } from "@/hooks/use-scans";
 import { useProjects } from "@/hooks/use-projects";
 import { StatusBadge } from "@/components/status-badge";
+import { Skeleton } from "@/components/skeleton";
 import {
   Calendar,
   RefreshCw,
@@ -12,7 +13,6 @@ import {
   ArrowRight,
   ArrowLeft,
   AlertCircle,
-  Loader2,
 } from "lucide-react";
 
 export default function ScansHistoryPage() {
@@ -44,37 +44,41 @@ export default function ScansHistoryPage() {
       {/* Title */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-foreground">
             Scan Audit History
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Browse and query all historical quality scans across your projects.
           </p>
         </div>
 
         <button
           onClick={() => refetch()}
-          className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-150 dark:hover:bg-gray-900 transition-colors"
+          className="p-2 text-muted-foreground hover:text-foreground rounded-sm hover:bg-muted transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white dark:bg-gray-900/30 p-4 border border-gray-200 dark:border-gray-800 rounded-lg">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 border border-border rounded-sm">
         <div className="flex flex-wrap gap-4 items-center w-full">
           {/* Project Filter */}
           <div className="flex flex-col w-full sm:w-auto">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+            <label
+              htmlFor="scans-filter-project"
+              className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1"
+            >
               Project
-            </span>
+            </label>
             <select
+              id="scans-filter-project"
               value={projectId}
               onChange={(e) => {
                 setProjectId(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="px-3 py-1.5 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               <option value="">All Projects</option>
               {projects.map((p: any) => (
@@ -87,16 +91,20 @@ export default function ScansHistoryPage() {
 
           {/* Status Filter */}
           <div className="flex flex-col w-full sm:w-auto">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+            <label
+              htmlFor="scans-filter-status"
+              className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1"
+            >
               Status Verdict
-            </span>
+            </label>
             <select
+              id="scans-filter-status"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-55 dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyan-500 capitalize"
+              className="px-3 py-1.5 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 capitalize"
             >
               <option value="">All Statuses</option>
               <option value="completed">Completed</option>
@@ -109,45 +117,51 @@ export default function ScansHistoryPage() {
       </div>
 
       {/* Scans List Table */}
-      <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden bg-white dark:bg-gray-950/20">
+      <div className="border border-border rounded-sm overflow-hidden bg-card">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center p-12 text-center space-y-3">
-            <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
-            <p className="text-sm font-mono text-gray-500">
-              Fetching scan history...
-            </p>
+          <div>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={`scan-skeleton-${i}`}
+                className="p-4 border-b border-border last:border-0 flex items-center justify-between"
+              >
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-5 w-20" />
+              </div>
+            ))}
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
-            <div className="p-4 bg-red-500/10 text-red-500 rounded-full w-fit mx-auto border border-red-500/20">
+            <div className="p-4 bg-destructive/10 text-destructive rounded-full w-fit mx-auto border border-destructive/20">
               <AlertCircle className="w-8 h-8" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+              <h3 className="text-sm font-bold text-foreground">
                 Failed to load scan history
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 We couldn&apos;t reach the scan service. Check your API server
                 connection and try again.
               </p>
             </div>
             <button
               onClick={() => refetch()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-sm border border-border hover:bg-muted transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Retry
             </button>
           </div>
         ) : scans.length === 0 ? (
-          <div className="p-12 text-center text-sm text-gray-500">
+          <div className="p-12 text-center text-sm text-muted-foreground">
             No scan logs match the current filters.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/35 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   <th className="px-6 py-3.5">Scan Job ID</th>
                   <th className="px-6 py-3.5">Project</th>
                   <th className="px-6 py-3.5">Source Type</th>
@@ -157,27 +171,27 @@ export default function ScansHistoryPage() {
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-850 text-sm">
+              <tbody className="divide-y divide-border text-sm">
                 {scans.map((scan: any) => (
                   <tr
                     key={scan.id}
-                    className="hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors"
+                    className="hover:bg-muted/50 transition-colors"
                   >
-                    <td className="px-6 py-4.5 font-mono text-xs font-semibold text-gray-900 dark:text-gray-100 max-w-[180px] truncate">
+                    <td className="px-6 py-4.5 font-mono text-xs font-semibold text-foreground max-w-[180px] truncate">
                       {scan.id}
                     </td>
                     <td className="px-6 py-4.5 whitespace-nowrap">
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                        <FolderOpen className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <FolderOpen className="w-3.5 h-3.5 text-muted-foreground" />
                         {scan.project?.name || (
-                          <span className="italic text-gray-500">Ad-Hoc</span>
+                          <span className="italic text-muted-foreground">Ad-Hoc</span>
                         )}
                       </span>
                     </td>
-                    <td className="px-6 py-4.5 capitalize text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-6 py-4.5 capitalize text-xs font-medium text-muted-foreground whitespace-nowrap">
                       {scan.sourceType}
                     </td>
-                    <td className="px-6 py-4.5 font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                    <td className="px-6 py-4.5 font-bold text-foreground whitespace-nowrap">
                       {scan.overallScore !== null
                         ? `${scan.overallScore}/100`
                         : "N/A"}
@@ -185,7 +199,7 @@ export default function ScansHistoryPage() {
                     <td className="px-6 py-4.5 whitespace-nowrap">
                       <StatusBadge status={scan.statusResult || scan.status} />
                     </td>
-                    <td className="px-6 py-4.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-6 py-4.5 text-xs text-muted-foreground whitespace-nowrap">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         {new Date(scan.createdAt).toLocaleString()}
@@ -198,7 +212,7 @@ export default function ScansHistoryPage() {
                             ? `/scans/${scan.id}/report`
                             : `/scans/${scan.id}/progress`
                         }
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 hover:bg-cyan-500/10 hover:text-cyan-500 hover:border-cyan-500/20 transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-sm bg-muted text-foreground border border-border hover:bg-cyan-500/10 hover:text-cyan-500 hover:border-cyan-500/20 transition-colors"
                       >
                         Inspect
                       </Link>
@@ -208,20 +222,70 @@ export default function ScansHistoryPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card Fallback */}
+          <div className="md:hidden">
+            {scans.map((scan: any) => (
+              <div
+                key={`${scan.id}-card`}
+                className="p-4 border-b border-border last:border-0 space-y-2"
+              >
+                <div className="font-mono text-xs font-semibold text-foreground truncate">
+                  {scan.id}
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <FolderOpen className="w-3.5 h-3.5 text-muted-foreground" />
+                    {scan.project?.name || (
+                      <span className="italic text-muted-foreground">Ad-Hoc</span>
+                    )}
+                  </span>
+                  <StatusBadge status={scan.statusResult || scan.status} />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="capitalize text-xs font-medium text-muted-foreground">
+                    {scan.sourceType}
+                  </span>
+                  <span className="font-bold text-sm text-foreground">
+                    {scan.overallScore !== null
+                      ? `${scan.overallScore}/100`
+                      : "N/A"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {new Date(scan.createdAt).toLocaleString()}
+                  </span>
+                  <Link
+                    href={
+                      scan.status === "completed"
+                        ? `/scans/${scan.id}/report`
+                        : `/scans/${scan.id}/progress`
+                    }
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-sm bg-muted text-foreground border border-border hover:bg-cyan-500/10 hover:text-cyan-500 hover:border-cyan-500/20 transition-colors"
+                  >
+                    Inspect
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-4">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-muted-foreground">
             Page {page} of {totalPages}
           </span>
           <div className="flex gap-2">
             <button
               onClick={handlePrevPage}
               disabled={page === 1}
-              className="inline-flex items-center gap-1 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-850 hover:bg-gray-100 dark:hover:bg-gray-900 disabled:opacity-40 transition-colors"
+              className="inline-flex items-center gap-1 px-3.5 py-2 text-xs font-semibold rounded-sm border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 transition-colors"
             >
               <ArrowLeft className="w-4.5 h-4.5" />
               Previous
@@ -229,7 +293,7 @@ export default function ScansHistoryPage() {
             <button
               onClick={handleNextPage}
               disabled={page === totalPages}
-              className="inline-flex items-center gap-1 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-850 hover:bg-gray-100 dark:hover:bg-gray-900 disabled:opacity-40 transition-colors"
+              className="inline-flex items-center gap-1 px-3.5 py-2 text-xs font-semibold rounded-sm border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 transition-colors"
             >
               Next
               <ArrowRight className="w-4.5 h-4.5" />

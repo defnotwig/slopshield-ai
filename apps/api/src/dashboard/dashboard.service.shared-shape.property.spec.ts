@@ -48,7 +48,7 @@ interface FindingRow {
   scanProjectId: string;
   category: string;
   falsePositive: boolean;
-  standardReference: string | null;
+  standardReferences: string[];
 }
 
 // Valid shared FindingCategory values — TopIssue.category must be one of these.
@@ -115,10 +115,11 @@ function matchFindingWhere(finding: FindingRow, where: any): boolean {
   if (where.falsePositive !== undefined) {
     if (finding.falsePositive !== where.falsePositive) return false;
   }
-  if (where.standardReference !== undefined) {
+  if (where.standardReferences !== undefined) {
+    // The service uses `{ isEmpty: false }` to require at least one standard.
     if (
-      where.standardReference.not === null &&
-      finding.standardReference === null
+      where.standardReferences.isEmpty === false &&
+      finding.standardReferences.length === 0
     ) {
       return false;
     }
@@ -174,7 +175,7 @@ function buildPrismaFake(
       findMany: async (args: any) =>
         findings
           .filter((f) => matchFindingWhere(f, args?.where))
-          .map((f) => ({ standardReference: f.standardReference })),
+          .map((f) => ({ standardReferences: f.standardReferences })),
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as unknown as PrismaService;
@@ -204,14 +205,14 @@ const findingArb: fc.Arbitrary<FindingRow> = fc.record({
   scanProjectId: projectIdArb,
   category: fc.constantFrom(...CATEGORIES),
   falsePositive: fc.boolean(),
-  standardReference: fc.option(
+  standardReferences: fc.array(
     fc.constantFrom(
       "OWASP A01:2021",
       "CWE-79",
       "WCAG 2.2 SC 1.1.1",
       "OWASP A03:2021",
     ),
-    { nil: null },
+    { maxLength: 3 },
   ),
 });
 

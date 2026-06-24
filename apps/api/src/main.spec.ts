@@ -162,6 +162,8 @@ describe("bootstrap (main.ts)", () => {
     process.env.DATABASE_URL = "postgres://user:pass@host:5432/db";
     process.env.REDIS_URL = "rediss://host:6379";
     process.env.JWT_SECRET = "secret";
+    // REFRESH_SECRET is required in production and must differ from JWT_SECRET.
+    process.env.REFRESH_SECRET = "refresh-secret";
     process.env.CORS_ORIGIN = "https://example.com";
     process.env.PORT = "10000";
 

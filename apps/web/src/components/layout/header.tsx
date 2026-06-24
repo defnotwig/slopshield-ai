@@ -2,9 +2,9 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell, Menu, Search } from "lucide-react";
 
-export function Header() {
+export function Header({ onMenuClick }: { readonly onMenuClick?: () => void }) {
   const pathname = usePathname();
 
   const getPageTitle = () => {
@@ -20,10 +20,20 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-background flex items-center justify-between px-8 sticky top-0 z-10 w-full">
-      <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-foreground transition-colors">
-        {getPageTitle()}
-      </h1>
+    <header className="h-16 border-b border-border bg-background flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 sticky top-0 z-10 w-full">
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="Open navigation menu"
+          className="p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-sm transition-colors border border-transparent hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 lg:hidden"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <h1 className="font-display text-xl sm:text-2xl font-bold uppercase tracking-wider text-foreground transition-colors truncate">
+          {getPageTitle()}
+        </h1>
+      </div>
 
       <div className="flex items-center gap-4">
         {/* Search Bar */}

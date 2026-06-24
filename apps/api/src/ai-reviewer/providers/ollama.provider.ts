@@ -9,6 +9,7 @@ import {
   AIReviewerProvider,
   ReviewInput,
 } from "../interfaces/ai-reviewer-provider.interface.js";
+import type { ProviderReviewResult } from "../ai-review.util.js";
 import { AI_REVIEWER_SYSTEM_PROMPT } from "../prompts/system-prompt.js";
 import { redactSecrets } from "../../scan/secret-redactor.js";
 
@@ -46,7 +47,7 @@ export class OllamaProvider implements AIReviewerProvider {
     }
   }
 
-  public async reviewCode(input: ReviewInput): Promise<AIReviewResult> {
+  public async reviewCode(input: ReviewInput): Promise<ProviderReviewResult> {
     if (!this.apiKey) {
       this.logger.warn(
         "Ollama API key not configured. Returning mock review.",

@@ -5,3 +5,7 @@ export * from "./analyzers/eslint.analyzer.js";
 export * from "./analyzers/typescript.analyzer.js";
 export * from "./analyzers/semgrep.analyzer.js";
 export * from "./analyzers/slop.analyzer.js";
+export * from "./analyzers/architecture.analyzer.js";
+export * from "./analyzers/dependency.analyzer.js";
+export * from "./analyzers/a11y.analyzer.js";
+export * from "./analyzers/custom-rule.analyzer.js";

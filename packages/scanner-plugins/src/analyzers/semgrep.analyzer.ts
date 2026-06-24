@@ -6,6 +6,12 @@ import {
   AnalysisResult,
 } from "../interfaces/static-analyzer.interface.js";
 
+/** Wall-clock cap for the Semgrep child process (env: SEMGREP_TIMEOUT_MS). */
+const SEMGREP_TIMEOUT_MS = Number(process.env.SEMGREP_TIMEOUT_MS ?? 60_000);
+/** stdout buffer cap (env: SEMGREP_MAX_BUFFER_MB, default 64MB). */
+const SEMGREP_MAX_BUFFER =
+  Number(process.env.SEMGREP_MAX_BUFFER_MB ?? 64) * 1024 * 1024;
+
 export class SemgrepAnalyzer implements StaticAnalyzer {
   public readonly name = "semgrep";
   public readonly description =
@@ -48,11 +54,47 @@ export class SemgrepAnalyzer implements StaticAnalyzer {
       return new Promise<AnalysisResult>((resolve) => {
         child_process.exec(
           cmd,
-          { maxBuffer: 10 * 1024 * 1024 },
+          {
+            maxBuffer: SEMGREP_MAX_BUFFER,
+            timeout: SEMGREP_TIMEOUT_MS,
+            killSignal: "SIGTERM",
+          },
           (error, stdout) => {
             // Note: semgrep exits with code 1 if findings are found, so we check stdout length
             // instead of failing outright on process error exit code.
             try {
+              const err = error as
+                | (child_process.ExecException & { killed?: boolean })
+                | null;
+
+              // The process was killed because it exceeded SEMGREP_TIMEOUT_MS.
+              // A hung/slow Semgrep must not fail the scan — record `skipped`.
+              if (err?.killed && err.signal === "SIGTERM") {
+                return resolve({
+                  analyzerName: this.name,
+                  success: false,
+                  skipped: true,
+                  findings: [],
+                  error: `Semgrep timed out after ${SEMGREP_TIMEOUT_MS}ms and was terminated.`,
+                  durationMs: Date.now() - startTime,
+                });
+              }
+
+              // Output exceeded the buffer cap — findings would be truncated, so
+              // surface a clear failure rather than parsing partial JSON.
+              if (
+                err &&
+                /maxBuffer|stdout maxBuffer length exceeded/i.test(err.message)
+              ) {
+                return resolve({
+                  analyzerName: this.name,
+                  success: false,
+                  findings: [],
+                  error: `Semgrep output exceeded the ${Math.round(SEMGREP_MAX_BUFFER / (1024 * 1024))}MB buffer; raise SEMGREP_MAX_BUFFER_MB.`,
+                  durationMs: Date.now() - startTime,
+                });
+              }
+
               if (!stdout && error) {
                 // The CLI was available but produced no usable output. This is
                 // most commonly because Semgrep could not reach its rule
@@ -70,6 +112,16 @@ export class SemgrepAnalyzer implements StaticAnalyzer {
                   error: skipped
                     ? `Semgrep rule registry is unavailable: ${error.message}`
                     : error.message,
+                  durationMs: Date.now() - startTime,
+                });
+              }
+
+              // Empty/whitespace output with no error → nothing to report.
+              if (!stdout || stdout.trim().length === 0) {
+                return resolve({
+                  analyzerName: this.name,
+                  success: true,
+                  findings: [],
                   durationMs: Date.now() - startTime,
                 });
               }

@@ -128,9 +128,11 @@ export function computeReadiness(
   env: NodeJS.ProcessEnv = process.env,
 ): ReadinessReport {
   return {
-    gemini: isConfigured(env[INTEGRATION_ENV_KEYS.gemini])
-      ? "configured"
-      : "skipped",
+    gemini:
+      isConfigured(env[INTEGRATION_ENV_KEYS.gemini]) ||
+      isConfigured(env.GEMINI_API_KEYS)
+        ? "configured"
+        : "skipped",
     githubToken: isConfigured(env[INTEGRATION_ENV_KEYS.githubToken])
       ? "configured"
       : "skipped",

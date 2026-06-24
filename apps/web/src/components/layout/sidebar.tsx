@@ -17,7 +17,13 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useMe, useLogout } from "@/hooks/use-auth";
 import { isSyntheticEmail } from "@/lib/user-utils";
 
-export function Sidebar() {
+export function Sidebar({
+  open = false,
+  onClose,
+}: {
+  readonly open?: boolean;
+  readonly onClose?: () => void;
+}) {
   const pathname = usePathname();
   const { data: user } = useMe();
   const logout = useLogout();
@@ -39,7 +45,11 @@ export function Sidebar() {
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
-    <aside className="w-64 fixed inset-y-0 left-0 z-20 flex flex-col border-r border-border bg-background">
+    <aside
+      className={`w-64 fixed inset-y-0 left-0 z-30 flex flex-col border-r border-border bg-background transition-transform duration-200 ease-out shadow-xl lg:shadow-none lg:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* Brand Header */}
       <div className="h-16 flex items-center px-6 border-b border-border">
         <Link href="/" className="flex items-center gap-3">
@@ -65,9 +75,10 @@ export function Sidebar() {
             <Link
               key={link.name}
               href={link.href}
-              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-sm border ${
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all rounded-sm border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
                 isActive
-                  ? "border-border bg-muted text-foreground border-l-cyan-500 border-l-2"
+                  ? "border-border bg-muted text-foreground border-l-ring border-l-2"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-transparent"
               }`}
             >
@@ -98,7 +109,7 @@ export function Sidebar() {
         </div>
         <button
           onClick={logout}
-          className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-sm transition-colors"
+          className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label="Log out"
         >
           <LogOut className="w-3.5 h-3.5" />

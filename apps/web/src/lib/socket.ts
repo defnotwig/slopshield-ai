@@ -65,8 +65,15 @@ export function subscribeToScan(
 ): () => void {
   const s = getSocket();
 
-  /* Join the scan-specific room */
-  s.emit("subscribe", { scanId });
+  /* Join the scan-specific room. The gateway listens for "subscribe-scan";
+   * an earlier mismatch ("subscribe") meant the client never joined the room
+   * and no progress events were ever delivered. */
+  s.emit("subscribe-scan", { scanId });
+
+  /* If the socket reconnects (e.g. after a transient drop) re-join the room so
+   * we keep receiving progress for this scan. */
+  const rejoin = () => s.emit("subscribe-scan", { scanId });
+  s.on("connect", rejoin);
 
   const handler = (data: ScanProgressEvent) => {
     if (data.scanId === scanId) {
@@ -78,6 +85,7 @@ export function subscribeToScan(
 
   return () => {
     s.off("scan-progress", handler);
-    s.emit("unsubscribe", { scanId });
+    s.off("connect", rejoin);
+    s.emit("unsubscribe-scan", { scanId });
   };
 }

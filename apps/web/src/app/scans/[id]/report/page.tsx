@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useScan } from "@/hooks/use-scans";
 import { ScoreGauge } from "@/components/score-gauge";
 import { CategoryScores } from "@/components/category-scores";
 import { FindingsTable } from "@/components/findings-table";
 import { FindingDetail } from "./finding-detail";
+import { ReportInsights } from "./report-insights";
 import { StatusBadge } from "@/components/status-badge";
 import { apiClient } from "@/lib/api-client";
 import {
@@ -36,11 +37,21 @@ export default function ScanReportPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState("");
 
+  // Close the finding-detail drawer on Escape.
+  useEffect(() => {
+    if (!selectedFindingId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedFindingId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selectedFindingId]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
-        <p className="text-sm font-mono text-gray-500">
+        <Loader2 className="w-8 h-8 text-ring animate-spin" />
+        <p className="text-sm font-mono text-muted-foreground">
           Compiling quality report data...
         </p>
       </div>
@@ -54,12 +65,12 @@ export default function ScanReportPage() {
           <FileWarning className="w-8 h-8" />
         </div>
         <h3 className="text-lg font-bold">Failed to load audit report</h3>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           Verify network connection or DB schema initialization.
         </p>
         <button
           onClick={() => refetch()}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-sm border border-border hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Retry
@@ -104,7 +115,10 @@ export default function ScanReportPage() {
     architecture: scan.architectureScore ?? 100,
     testability: scan.testabilityScore ?? 100,
     frontend: scan.frontendScore ?? 100,
-    backend: scan.backendScore ?? 100,
+    // reliabilityScore is the canonical column; backendScore is the legacy
+    // fallback for scans created before the column split.
+    reliability: scan.reliabilityScore ?? scan.backendScore ?? 100,
+    documentation: scan.documentationScore ?? 100,
   };
 
   // Convert refactorPlan to string array safely
@@ -256,6 +270,13 @@ export default function ScanReportPage() {
         <CategoryScores scores={scoreData} />
       </section>
 
+      {/* Observability: severity distribution, performance, coverage, compliance */}
+      <ReportInsights
+        findings={activeFindings}
+        metrics={scan.metrics ?? null}
+        coverage={(scan.analyzerCoverage as any[]) ?? []}
+      />
+
       {/* Findings Table */}
       <section className="space-y-4">
         <h3 className="font-display text-lg font-bold uppercase tracking-wider text-muted-foreground">
@@ -310,12 +331,19 @@ export default function ScanReportPage() {
       {selectedFindingId && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end transition-opacity">
           {/* Backdrop Closer */}
-          <div
-            className="absolute inset-0"
+          <button
+            type="button"
+            aria-label="Close finding details"
+            className="absolute inset-0 cursor-default"
             onClick={() => setSelectedFindingId(null)}
           />
 
-          <div className="relative w-full max-w-xl bg-background border-l border-border h-full overflow-y-auto p-8 shadow-2xl flex flex-col justify-between">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Finding details"
+            className="relative w-full max-w-xl bg-background border-l border-border h-full overflow-y-auto p-8 shadow-2xl flex flex-col justify-between"
+          >
             <FindingDetail
               findingId={selectedFindingId}
               onClose={() => setSelectedFindingId(null)}

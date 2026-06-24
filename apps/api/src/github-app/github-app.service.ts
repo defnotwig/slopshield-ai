@@ -746,7 +746,7 @@ export class GitHubAppService {
         title: f.title,
         severity: f.severity,
         category: f.category,
-        standardReference: f.standardReference ?? undefined,
+        standardReference: f.standardReferences?.[0] ?? undefined,
       })),
       criticalCount: severityCounts.critical,
       highCount: severityCounts.high,

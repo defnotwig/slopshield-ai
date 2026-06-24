@@ -41,7 +41,7 @@ const FINDING = {
   category: "security",
   title: "Unvalidated user input",
   description: "User input flows into a query without validation.",
-  standardReference: "OWASP-A03 / CWE-89",
+  standardReferences: ["OWASP-A03 / CWE-89"],
   recommendation: "Use a parameterized query and validate input.",
   suggestedTests: ["Reject malicious SQL payloads"],
   blocking: false,

@@ -7,7 +7,8 @@ interface CategoryScoresProps {
     architecture: number;
     testability: number;
     frontend: number;
-    backend: number;
+    reliability: number;
+    documentation: number;
   };
 }
 
@@ -44,10 +45,16 @@ export function CategoryScores({ scores }: CategoryScoresProps) {
       color: "var(--color-primary, #06b6d4)",
     },
     {
-      name: "Backend Reliability",
-      value: scores.backend,
-      weight: "10%",
+      name: "Reliability",
+      value: scores.reliability,
+      weight: "5%",
       color: "var(--color-chart-5, #8b5cf6)",
+    },
+    {
+      name: "Documentation",
+      value: scores.documentation,
+      weight: "5%",
+      color: "var(--color-chart-2, #10b981)",
     },
   ];
 

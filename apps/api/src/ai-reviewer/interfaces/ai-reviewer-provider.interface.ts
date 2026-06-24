@@ -1,4 +1,5 @@
-import { Finding, AIReviewResult } from "@slopshield/shared";
+import { Finding } from "@slopshield/shared";
+import type { ProviderReviewResult } from "../ai-review.util.js";
 
 export interface ReviewInput {
   scanId: string;
@@ -13,7 +14,12 @@ export interface ReviewInput {
 }
 
 export interface AIReviewerProvider {
-  reviewCode(input: ReviewInput): Promise<AIReviewResult>;
+  /**
+   * Review a (possibly batched) set of files. The returned result may carry an
+   * optional `usage` field with the provider's token accounting so the scan
+   * pipeline can persist AI cost metrics.
+   */
+  reviewCode(input: ReviewInput): Promise<ProviderReviewResult>;
   generateFixPlan(findings: Finding[], codeContext: string): Promise<string[]>;
   summarizeForLark(scanReport: any): Promise<string>;
 }

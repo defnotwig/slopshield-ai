@@ -3,6 +3,7 @@ export * from "./schemas/finding.schema.js";
 export * from "./schemas/scan.schema.js";
 export * from "./schemas/ai-review.schema.js";
 export * from "./schemas/rule.schema.js";
+export * from "./schemas/custom-rule.schema.js";
 export * from "./schemas/score.schema.js";
 export * from "./schemas/lark.schema.js";
 export * from "./schemas/readiness.schema.js";

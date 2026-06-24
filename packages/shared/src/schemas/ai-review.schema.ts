@@ -40,6 +40,18 @@ export const AIFindingSchema = z.object({
   recommendation: z.string(),
 
   /**
+   * Optional test cases the team should add to verify the fix for this specific
+   * finding. Persisted per-finding (previously dropped on the floor).
+   */
+  suggested_tests: z.array(z.string()).optional(),
+
+  /**
+   * Optional short excerpt of the offending code (a few lines). Lets AI findings
+   * show a snippet in the report drawer just like static-analyzer findings.
+   */
+  code_snippet: z.string().optional(),
+
+  /**
    * Whether this finding alone should block a merge.
    * The AI is instructed to set this `true` only for high-confidence critical issues.
    */

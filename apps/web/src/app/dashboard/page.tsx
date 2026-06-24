@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   useDashboardSummary,
   useDashboardTrends,
@@ -8,6 +9,7 @@ import {
   useDashboardStandards,
 } from "@/hooks/use-dashboard";
 import { useProjects } from "@/hooks/use-projects";
+import { Skeleton } from "@/components/skeleton";
 import {
   LineChart,
   Line,
@@ -32,6 +34,10 @@ import {
   AlertTriangle,
   Layers,
   ShieldCheck,
+  PlusCircle,
+  FolderOpen,
+  BookOpen,
+  ArrowRight,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -66,13 +72,48 @@ export default function DashboardPage() {
     refetchStd();
   };
 
-  const COLORS = [
-    "#00d4ff",
-    "#00ff88",
-    "#ffaa00",
-    "#ff6b35",
-    "#a78bfa",
-    "#ff3366",
+  const isRefreshing =
+    sumLoading || trendsLoading || issuesLoading || stdLoading;
+
+  // Professional, theme-stable chart palette (readable on both light and dark).
+  const CHART = {
+    accent: "var(--color-ring)", // score trend — brand accent, adapts to theme
+    issues: "#f59e0b", // amber-500 — quality violations
+    standards: "#8b5cf6", // violet-500 — matches the Layers icon
+  };
+
+  // Verdict slices mapped to their semantic meaning.
+  const VERDICT_COLORS: Record<string, string> = {
+    Passed: "#10b981", // emerald-500
+    Warnings: "#f59e0b", // amber-500
+    Blocked: "#ef4444", // red-500
+  };
+
+  const quickActions = [
+    {
+      name: "Run New Scan",
+      desc: "Audit a codebase for slop",
+      href: "/scans/new",
+      icon: PlusCircle,
+      color: "text-cyan-600 dark:text-cyan-400",
+      bg: "bg-cyan-500/10",
+    },
+    {
+      name: "View Projects",
+      desc: "Manage connected repositories",
+      href: "/projects",
+      icon: FolderOpen,
+      color: "text-violet-600 dark:text-violet-400",
+      bg: "bg-violet-500/10",
+    },
+    {
+      name: "Rules Library",
+      desc: "Browse quality rule sets",
+      href: "/rules",
+      icon: BookOpen,
+      color: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-500/10",
+    },
   ];
 
   const stats = [
@@ -154,7 +195,8 @@ export default function DashboardPage() {
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="px-3.5 py-2 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus:outline-none focus:border-ring"
+            aria-label="Filter dashboard by project"
+            className="flex-1 sm:flex-none px-3.5 py-2 text-xs rounded-sm border border-border bg-muted/40 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus:border-ring"
           >
             <option value="">All Projects Summary</option>
             {projects.map((p: any) => (
@@ -166,9 +208,11 @@ export default function DashboardPage() {
 
           <button
             onClick={handleRefresh}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-sm border border-border bg-muted/20 hover:bg-muted transition-colors"
+            disabled={isRefreshing}
+            aria-label="Refresh dashboard data"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-sm border border-border bg-muted/20 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
@@ -180,21 +224,25 @@ export default function DashboardPage() {
           return (
             <div
               key={stat.name}
-              className="border border-border bg-card p-6 rounded-sm flex items-center justify-between gap-4"
+              className="border border-border bg-card p-6 rounded-sm flex items-center justify-between gap-4 shadow-sm hover:shadow-md hover:border-foreground/20 transition-shadow"
             >
               <div className="space-y-1">
                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest block">
                   {stat.name}
                 </span>
                 <p className="font-display text-4xl font-extrabold text-foreground tracking-tight mt-1">
-                  {stat.value}
+                  {sumLoading ? (
+                    <Skeleton className="h-9 w-20" />
+                  ) : (
+                    stat.value
+                  )}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
                   {stat.desc}
                 </p>
               </div>
               <div
-                className={`p-3 rounded-sm border border-border/10 bg-muted shrink-0 ${stat.color}`}
+                className={`p-3 rounded-sm shrink-0 ${stat.bg} ${stat.color}`}
               >
                 <Icon className="w-5 h-5" />
               </div>
@@ -203,10 +251,37 @@ export default function DashboardPage() {
         })}
       </section>
 
+      {/* Quick Actions */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {quickActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link
+              key={action.name}
+              href={action.href}
+              className="group border border-border bg-card p-5 rounded-sm flex items-center gap-4 shadow-sm hover:shadow-md hover:border-foreground/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <span className={`p-3 rounded-sm shrink-0 ${action.bg} ${action.color}`}>
+                <Icon className="w-5 h-5" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-foreground">
+                  {action.name}
+                </span>
+                <span className="block text-xs text-muted-foreground truncate">
+                  {action.desc}
+                </span>
+              </span>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
+            </Link>
+          );
+        })}
+      </section>
+
       {/* Charts Grid */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Quality Score Trend Over Time */}
-        <div className="lg:col-span-2 border border-border bg-card p-6 rounded-sm space-y-4">
+        <div className="lg:col-span-2 border border-border bg-card p-6 rounded-sm space-y-4 shadow-sm">
           <h3 className="font-display text-lg font-bold uppercase tracking-wider text-foreground flex gap-2 items-center">
             <TrendingUp className="w-4 h-4 text-ring" />
             Quality Score Trend Over Time
@@ -214,9 +289,7 @@ export default function DashboardPage() {
 
           <div className="h-64 w-full">
             {trendsLoading ? (
-              <div className="h-full flex items-center justify-center text-xs font-mono text-muted-foreground">
-                Fetching trend series...
-              </div>
+              <Skeleton className="h-full w-full" />
             ) : safeTrends.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
                 No scan logs recorded to plot trend data.
@@ -254,9 +327,9 @@ export default function DashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="score"
-                    stroke="var(--color-severity-low)"
+                    stroke={CHART.accent}
                     strokeWidth={2}
-                    dot={{ fill: "var(--color-severity-low)", r: 3 }}
+                    dot={{ fill: CHART.accent, r: 3 }}
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>
@@ -266,7 +339,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Scan Status Distribution */}
-        <div className="border border-border bg-card p-6 rounded-sm space-y-4">
+        <div className="border border-border bg-card p-6 rounded-sm space-y-4 shadow-sm">
           <h3 className="font-display text-lg font-bold uppercase tracking-wider text-foreground flex gap-2 items-center">
             <ShieldCheck className="w-4 h-4 text-status-passed" />
             Build Scan Verdicts
@@ -274,9 +347,7 @@ export default function DashboardPage() {
 
           <div className="h-64 w-full flex items-center justify-center">
             {sumLoading ? (
-              <span className="text-xs font-mono text-muted-foreground">
-                Loading distribution...
-              </span>
+              <Skeleton className="h-full w-full" />
             ) : pieData.length === 0 ? (
               <span className="text-xs text-muted-foreground">
                 No scans executed.
@@ -296,7 +367,7 @@ export default function DashboardPage() {
                     {pieData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+                        fill={VERDICT_COLORS[entry.name] ?? CHART.accent}
                       />
                     ))}
                   </Pie>
@@ -318,7 +389,7 @@ export default function DashboardPage() {
       {/* Row 2 Charts */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Top 5 Quality Issues */}
-        <div className="border border-border bg-card p-6 rounded-sm space-y-4">
+        <div className="border border-border bg-card p-6 rounded-sm space-y-4 shadow-sm">
           <h3 className="font-display text-lg font-bold uppercase tracking-wider text-foreground flex gap-2 items-center">
             <AlertTriangle className="w-4 h-4 text-severity-high" />
             Most Common Quality Violations
@@ -326,9 +397,7 @@ export default function DashboardPage() {
 
           <div className="h-64 w-full">
             {issuesLoading ? (
-              <div className="h-full flex items-center justify-center text-xs font-mono text-muted-foreground">
-                Fetching issues...
-              </div>
+              <Skeleton className="h-full w-full" />
             ) : safeIssues.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
                 No quality issues recorded. Clean code!
@@ -365,7 +434,7 @@ export default function DashboardPage() {
                   />
                   <Bar
                     dataKey="count"
-                    fill="var(--color-severity-high)"
+                    fill={CHART.issues}
                     radius={[2, 2, 0, 0]}
                   />
                 </BarChart>
@@ -375,7 +444,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Mapped Standards Violations */}
-        <div className="border border-border bg-card p-6 rounded-sm space-y-4">
+        <div className="border border-border bg-card p-6 rounded-sm space-y-4 shadow-sm">
           <h3 className="font-display text-lg font-bold uppercase tracking-wider text-foreground flex gap-2 items-center">
             <Layers className="w-4 h-4 text-purple-500" />
             Compliance Framework Violations
@@ -383,9 +452,7 @@ export default function DashboardPage() {
 
           <div className="h-64 w-full">
             {stdLoading ? (
-              <div className="h-full flex items-center justify-center text-xs font-mono text-muted-foreground">
-                Fetching standards...
-              </div>
+              <Skeleton className="h-full w-full" />
             ) : safeStandards.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
                 No compliance violations found.
@@ -425,7 +492,7 @@ export default function DashboardPage() {
                   />
                   <Bar
                     dataKey="violations"
-                    fill="var(--color-chart-5)"
+                    fill={CHART.standards}
                     radius={[0, 2, 2, 0]}
                   />
                 </BarChart>

@@ -95,7 +95,13 @@ describe("ScanProcessor — Property 27: Lark outcome never blocks scan completi
         createMany: jest.fn().mockResolvedValue({}),
         findMany: jest.fn().mockResolvedValue([]),
       },
-      scanJob: { update: jest.fn().mockResolvedValue({}) },
+      scanJob: {
+        update: jest.fn().mockResolvedValue({}),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ scanMode: "full", project: null }),
+      },
+      scanMetrics: { upsert: jest.fn().mockResolvedValue({}) },
     };
 
     const gateway = { broadcastProgress: jest.fn() };

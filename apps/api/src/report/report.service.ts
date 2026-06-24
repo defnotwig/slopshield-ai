@@ -44,8 +44,10 @@ export class ReportService {
         architecture: scan.architectureScore ?? 0,
         testability: scan.testabilityScore ?? 0,
         frontend: scan.frontendScore ?? 0,
-        reliability: scan.backendScore ?? 0,
-        documentation: 100, // Default base
+        // reliabilityScore is the canonical column; fall back to the legacy
+        // backendScore for rows scanned before the column split.
+        reliability: scan.reliabilityScore ?? scan.backendScore ?? 0,
+        documentation: scan.documentationScore ?? 100,
       },
       files: scan.scanFiles.map((f: any) => ({
         path: f.filePath,
@@ -62,7 +64,7 @@ export class ReportService {
         description: f.description,
         file: f.filePath,
         line: f.lineNumber,
-        standardReferences: f.standardReference ? [f.standardReference] : [],
+        standardReferences: (f.standardReferences as string[]) ?? [],
         recommendation: f.recommendation,
         suggestedTests: (f.suggestedTests as string[]) || [],
         blocking: f.blocking,

@@ -399,6 +399,7 @@ export class ScanService {
         project: true,
         findings: true,
         scanFiles: true,
+        metrics: true,
       },
     });
 
@@ -407,6 +408,65 @@ export class ScanService {
     }
 
     return scan;
+  }
+
+  /** Per-scan performance/telemetry record (timings, file/finding counts, AI tokens). */
+  public async getScanMetrics(id: string): Promise<any> {
+    const scan = await this.prisma.scanJob.findUnique({
+      where: { id },
+      select: { id: true, analyzerCoverage: true, metrics: true },
+    });
+    if (!scan) {
+      throw new NotFoundException(`Scan job with ID ${id} not found`);
+    }
+    return {
+      scanId: scan.id,
+      metrics: scan.metrics ?? null,
+      analyzerCoverage: scan.analyzerCoverage ?? [],
+    };
+  }
+
+  /**
+   * Aggregate scanner telemetry across the most recent completed scans: average
+   * stage durations, average AI token usage, and totals. Powers the admin
+   * observability view and trend monitoring.
+   */
+  public async getAggregateMetrics(limit = 200): Promise<any> {
+    const rows = await this.prisma.scanMetrics.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    const n = rows.length;
+    if (n === 0) {
+      return { sampleSize: 0, averages: {}, totals: {} };
+    }
+
+    const sum = (key: keyof (typeof rows)[number]): number =>
+      rows.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+    const avg = (key: keyof (typeof rows)[number]): number =>
+      Math.round(sum(key) / n);
+
+    return {
+      sampleSize: n,
+      averages: {
+        queueWaitMs: avg("queueWaitMs"),
+        fetchMs: avg("fetchMs"),
+        classifyMs: avg("classifyMs"),
+        staticAnalysisMs: avg("staticAnalysisMs"),
+        aiReviewMs: avg("aiReviewMs"),
+        scoringMs: avg("scoringMs"),
+        totalMs: avg("totalMs"),
+        analyzedFiles: avg("analyzedFiles"),
+        staticFindingCount: avg("staticFindingCount"),
+        aiFindingCount: avg("aiFindingCount"),
+      },
+      totals: {
+        scans: n,
+        aiInputTokens: sum("aiInputTokens"),
+        aiOutputTokens: sum("aiOutputTokens"),
+      },
+    };
   }
 
   public async listScans(

@@ -7,6 +7,10 @@ import {
   SecretAnalyzer,
   SemgrepAnalyzer,
   SlopAnalyzer,
+  ArchitectureAnalyzer,
+  DependencyAnalyzer,
+  A11yAnalyzer,
+  CustomRuleAnalyzer,
   AnalysisContext,
   AnalysisResult,
 } from "@slopshield/scanner-plugins";
@@ -35,6 +39,10 @@ export class ScannerOrchestrator implements OnModuleInit {
     "typescript-compiler": "typescript",
     semgrep: "semgrep",
     "slop-scanner": "rules-engine",
+    "architecture-scanner": "architecture",
+    "dependency-scanner": "dependency",
+    "a11y-scanner": "accessibility",
+    "custom-rules": "custom-rules",
   };
 
   private resolveSource(analyzerName: string): FindingSource {
@@ -51,6 +59,10 @@ export class ScannerOrchestrator implements OnModuleInit {
       new TypeScriptAnalyzer(),
       new SemgrepAnalyzer(),
       new SlopAnalyzer(),
+      new ArchitectureAnalyzer(),
+      new DependencyAnalyzer(),
+      new A11yAnalyzer(),
+      new CustomRuleAnalyzer(),
     ];
 
     // Log available analyzers
@@ -73,9 +85,22 @@ export class ScannerOrchestrator implements OnModuleInit {
   public async runAll(context: AnalysisContext): Promise<OrchestratorResult> {
     const activeAnalyzers: StaticAnalyzer[] = [];
     const coverage: AnalyzerCoverage[] = [];
+    const enabled = context.enabledAnalyzers;
 
     // Filter to only run available analyzers; record unavailable ones as skipped.
     for (const analyzer of this.analyzers) {
+      // Honor scanMode: analyzers not enabled for this mode are recorded as
+      // skipped (so the coverage view shows why they didn't run) and not executed.
+      if (enabled && !enabled.includes(analyzer.name)) {
+        coverage.push({
+          analyzer: this.resolveSource(analyzer.name),
+          status: "skipped",
+          findingCount: 0,
+          durationMs: 0,
+          reason: "Disabled by scan mode",
+        });
+        continue;
+      }
       if (await analyzer.isAvailable()) {
         activeAnalyzers.push(analyzer);
       } else {

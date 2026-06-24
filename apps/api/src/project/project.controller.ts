@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Param,
@@ -29,6 +30,19 @@ export class ProjectController {
   @Get(":id")
   public async findOne(@Param("id") id: string): Promise<any> {
     return this.projectService.findOne(id);
+  }
+
+  @Get(":id/custom-rules")
+  public async getCustomRules(@Param("id") id: string): Promise<any> {
+    return this.projectService.getCustomRules(id);
+  }
+
+  @Put(":id/custom-rules")
+  public async setCustomRules(
+    @Param("id") id: string,
+    @Body("rules") rules: unknown,
+  ): Promise<any> {
+    return this.projectService.setCustomRules(id, rules);
   }
 
   @Patch(":id")

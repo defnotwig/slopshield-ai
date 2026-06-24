@@ -10,6 +10,7 @@ export class LarkService {
   private readonly appId: string;
   private readonly appSecret: string;
   private readonly webhookUrl: string;
+  private readonly defaultChatId: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -19,6 +20,68 @@ export class LarkService {
     this.appId = this.configService.get<string>("LARK_APP_ID", "");
     this.appSecret = this.configService.get<string>("LARK_APP_SECRET", "");
     this.webhookUrl = this.configService.get<string>("LARK_WEBHOOK_URL", "");
+    this.defaultChatId = this.configService.get<string>("LARK_DEFAULT_CHAT_ID", "");
+  }
+
+  /**
+   * Obtain a tenant access token from Lark using app credentials.
+   * Required for sending messages to chats via the Bot API.
+   */
+  private async getTenantAccessToken(): Promise<string> {
+    const response = await fetch(
+      "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          app_id: this.appId,
+          app_secret: this.appSecret,
+        }),
+      },
+    );
+
+    const data = (await response.json()) as any;
+    if (!response.ok || data.code !== 0) {
+      throw new Error(
+        `Failed to get Lark tenant access token: ${data.msg || response.statusText}`,
+      );
+    }
+
+    return data.tenant_access_token;
+  }
+
+  /**
+   * Send an interactive card message to a Lark chat using the Bot API.
+   * Uses POST /im/v1/messages with receive_id_type=chat_id.
+   */
+  private async sendCardToChat(
+    chatId: string,
+    cardJson: any,
+  ): Promise<void> {
+    const token = await this.getTenantAccessToken();
+
+    const response = await fetch(
+      "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=chat_id",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          receive_id: chatId,
+          msg_type: "interactive",
+          content: JSON.stringify(cardJson),
+        }),
+      },
+    );
+
+    const data = (await response.json()) as any;
+    if (!response.ok || data.code !== 0) {
+      throw new Error(
+        `Failed to send Lark card to chat ${chatId}: ${data.msg || response.statusText}`,
+      );
+    }
   }
 
   /**
@@ -70,24 +133,28 @@ export class LarkService {
 
       actorId = scan.startedBy ?? null;
 
-      // (Req 9.2) Webhook not configured → skip delivery and record `skipped`.
-      if (!this.webhookUrl) {
+      // (Req 9.2) Neither webhook nor chat ID configured → skip delivery.
+      const targetChatId = chatId || this.defaultChatId;
+      const hasWebhook = !!this.webhookUrl;
+      const hasChatDelivery = !!(targetChatId && this.appId && this.appSecret);
+
+      if (!hasWebhook && !hasChatDelivery) {
         this.logger.warn(
-          `LARK_WEBHOOK_URL is not configured. Skipping Lark delivery for scan ${scanId}.`,
+          `Neither LARK_WEBHOOK_URL nor LARK_DEFAULT_CHAT_ID is configured. Skipping Lark delivery for scan ${scanId}.`,
         );
         await this.prisma.larkEvent.create({
           data: {
             scanJobId: scanId,
             eventType: "card-sent",
             status: "skipped",
-            chatId: chatId ?? null,
+            chatId: targetChatId ?? null,
           },
         });
         await this.auditService.record({
           actorId,
           action: AUDIT_ACTION.LARK_SEND,
           target: scanId,
-          metadata: { outcome: "skipped", reason: "webhook-not-configured" },
+          metadata: { outcome: "skipped", reason: "no-delivery-method-configured" },
         });
         return true;
       }
@@ -123,30 +190,34 @@ export class LarkService {
           ? LarkCardBuilder.buildPassedCard(summaryPayload)
           : LarkCardBuilder.buildBlockedCard(summaryPayload);
 
-      // (Req 9.3) Record the LarkEvent as `pending` BEFORE the POST.
+      // (Req 9.3) Record the LarkEvent as `pending` BEFORE delivery.
       const pendingEvent = await this.prisma.larkEvent.create({
         data: {
           scanJobId: scanId,
           eventType: "card-sent",
           status: "pending",
-          chatId: chatId ?? null,
+          chatId: targetChatId ?? null,
           payload: cardJson,
         },
       });
       larkEventId = pendingEvent.id;
 
-      const response = await fetch(this.webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          msg_type: "interactive",
-          card: cardJson,
-        }),
-      });
+      // Prefer Bot API (chat ID) over webhook for delivery
+      if (hasChatDelivery) {
+        await this.sendCardToChat(targetChatId, cardJson);
+      } else {
+        const response = await fetch(this.webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msg_type: "interactive",
+            card: cardJson,
+          }),
+        });
 
-      if (!response.ok) {
-        // (Req 9.5) Non-success response → update to `failed`.
-        throw new Error(`Lark returned HTTP error status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`Lark webhook returned HTTP error status: ${response.status}`);
+        }
       }
 
       // (Req 9.4, 9.4a) Success response → update to `success`.

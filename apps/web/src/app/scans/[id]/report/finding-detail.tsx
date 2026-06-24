@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { SeverityBadge } from "@/components/severity-badge";
 import { CodeViewer } from "@/components/code-viewer";
 import { apiClient } from "@/lib/api-client";
+import { STANDARDS_REFERENCES } from "@slopshield/shared";
 import {
   X,
   Check,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   Loader2,
   CheckSquare,
+  ExternalLink,
 } from "lucide-react";
 
 interface Finding {
@@ -21,13 +23,26 @@ interface Finding {
   category: string;
   title: string;
   description: string | null;
-  standardReference: string | null;
+  standardReferences: string[] | null;
   recommendation: string | null;
   suggestedTests: any;
   blocking: boolean;
   confidence: number | null;
   codeSnippet: string | null;
   falsePositive: boolean;
+}
+
+/**
+ * Resolve a stored standard token (e.g. "OWASP_TOP_10" or free text like
+ * "CWE-79") to a human label + external URL. Falls back to the raw token when
+ * it is not a known reference key.
+ */
+function resolveStandard(ref: string): { label: string; url: string | null } {
+  const known = (STANDARDS_REFERENCES as Record<string, { shortName: string; url: string }>)[ref];
+  if (known) {
+    return { label: known.shortName, url: known.url };
+  }
+  return { label: ref, url: null };
 }
 
 interface FindingDetailProps {
@@ -130,14 +145,14 @@ export function FindingDetail({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-ring animate-spin" />
       </div>
     );
   }
 
   if (!finding) {
     return (
-      <div className="p-6 text-center text-gray-500">Finding not found.</div>
+      <div className="p-6 text-center text-muted-foreground">Finding not found.</div>
     );
   }
 
@@ -221,16 +236,42 @@ export function FindingDetail({
       )}
 
       {/* Mapped Standards */}
-      {finding.standardReference && (
+      {finding.standardReferences && finding.standardReferences.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-            Standard Compliance Reference
+            Standard Compliance References
           </h4>
-          <div className="flex gap-2.5 items-center p-3 rounded-sm bg-ring/5 border border-ring/15">
-            <AlertCircle className="w-4 h-4 text-ring shrink-0" />
-            <span className="text-xs font-bold text-ring font-mono uppercase tracking-wider">
-              {finding.standardReference}
-            </span>
+          <div className="flex flex-wrap gap-2">
+            {finding.standardReferences.map((ref) => {
+              const { label, url } = resolveStandard(ref);
+              const chipBody = (
+                <>
+                  <AlertCircle className="w-3.5 h-3.5 text-ring shrink-0" />
+                  <span className="text-xs font-bold text-ring font-mono uppercase tracking-wider">
+                    {label}
+                  </span>
+                  {url && <ExternalLink className="w-3 h-3 text-ring/70 shrink-0" />}
+                </>
+              );
+              return url ? (
+                <a
+                  key={ref}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex gap-1.5 items-center p-2 rounded-sm bg-ring/5 border border-ring/15 hover:bg-ring/10 transition-colors"
+                >
+                  {chipBody}
+                </a>
+              ) : (
+                <span
+                  key={ref}
+                  className="inline-flex gap-1.5 items-center p-2 rounded-sm bg-ring/5 border border-ring/15"
+                >
+                  {chipBody}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}

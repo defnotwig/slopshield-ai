@@ -141,4 +141,22 @@ export class ScanController {
       isFalsePositive,
     );
   }
+
+  // Aggregate scanner telemetry across recent scans (admin/observability view).
+  // Declared before ":id/metrics" is irrelevant (distinct path), but kept here
+  // for grouping. Route: GET /scans/metrics/aggregate
+  @Get("metrics/aggregate")
+  public async getAggregateMetrics(
+    @Query("limit") limit?: string,
+  ): Promise<any> {
+    const limitNum = limit ? Number.parseInt(limit, 10) : 200;
+    return this.scanService.getAggregateMetrics(limitNum);
+  }
+
+  // Per-scan performance telemetry: stage timings, file/finding counts, AI tokens.
+  // Route: GET /scans/:id/metrics
+  @Get(":id/metrics")
+  public async getMetrics(@Param("id") id: string): Promise<any> {
+    return this.scanService.getScanMetrics(id);
+  }
 }

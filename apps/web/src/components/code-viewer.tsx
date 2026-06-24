@@ -18,7 +18,7 @@ export function CodeViewer({
   const { theme } = useTheme();
 
   return (
-    <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden w-full font-mono text-sm shadow-inner bg-gray-50 dark:bg-gray-950">
+    <div className="border border-border rounded-sm overflow-hidden w-full font-mono text-sm shadow-inner bg-muted/40">
       <Editor
         height={height}
         language={language}
@@ -39,7 +39,7 @@ export function CodeViewer({
           wordWrap: "on",
         }}
         loading={
-          <div className="flex items-center justify-center h-full text-xs font-mono text-gray-500 py-12">
+          <div className="flex items-center justify-center h-full text-xs font-mono text-muted-foreground py-12">
             Loading Monaco Editor...
           </div>
         }

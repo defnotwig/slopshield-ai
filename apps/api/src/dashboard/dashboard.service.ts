@@ -156,18 +156,20 @@ export class DashboardService {
       where: {
         ...filter,
         falsePositive: false,
-        standardReference: { not: null },
+        standardReferences: { isEmpty: false },
       },
       select: {
-        standardReference: true,
+        standardReferences: true,
       },
     });
 
+    // A finding can now map to multiple standards — count every reference.
     const standardsMap: Record<string, number> = {};
     for (const f of findings) {
-      if (f.standardReference) {
-        standardsMap[f.standardReference] =
-          (standardsMap[f.standardReference] || 0) + 1;
+      for (const ref of f.standardReferences ?? []) {
+        if (ref) {
+          standardsMap[ref] = (standardsMap[ref] || 0) + 1;
+        }
       }
     }
 
